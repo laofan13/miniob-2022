@@ -111,6 +111,21 @@ RC Trx::delete_record(Table *table, Record *record)
   return rc;
 }
 
+RC Trx::update_record(Table *table, Record *record) {
+  RC rc = RC::SUCCESS;
+  // 先校验是否以前是否存在过(应该不会存在)
+  Operation *old_oper = find_operation(table, record->rid());
+  if (old_oper != nullptr) {
+    return RC::GENERIC_ERROR;  // error code
+  }
+
+  start_if_not_started();
+
+  set_record_trx_id(table, *record, trx_id_, true);
+  insert_operation(table, Operation::Type::UPDATE, record->rid());
+  return rc;
+}
+
 void Trx::set_record_trx_id(Table *table, Record &record, int32_t trx_id, bool deleted) const
 {
   const FieldMeta *trx_field = table->table_meta().trx_field();

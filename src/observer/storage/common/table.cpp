@@ -675,6 +675,104 @@ RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value
   return RC::GENERIC_ERROR;
 }
 
+RC Table::update_record(Trx *trx, const char *field_name, Record *old_record, Record *new_record)
+{
+  RC rc = RC::SUCCESS;
+
+  if (trx != nullptr) {
+    trx->init_trx_info(this, *new_record);
+  }
+
+  rc = update_entry_of_indexes(field_name,old_record->data() ,new_record->data(), old_record->rid());
+  if (rc != RC::SUCCESS) {
+    RC rc2 = update_entry_of_indexes(field_name,new_record->data() ,old_record->data(), new_record->rid());
+    if (rc2 != RC::SUCCESS) {
+      LOG_ERROR("Failed to rollback index data when update index entries failed. table name=%s, rc=%d:%s",
+          name(),
+          rc2,
+          strrc(rc2));
+    }
+    rc2 = record_handler_->update_record(old_record);
+    if (rc2 != RC::SUCCESS) {
+      LOG_PANIC("Failed to rollback record data when update index entries failed. table name=%s, rc=%d:%s",
+          name(),
+          rc2,
+          strrc(rc2));
+    }
+    return rc;
+  }
+
+  rc = record_handler_->update_record(new_record);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("update record failed. table name=%s, rc=%d:%s", table_meta_.name(), rc, strrc(rc));
+    return rc;
+  }
+
+  if (trx != nullptr) {
+    rc = trx->update_record(this, new_record);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to log operation(update) to trx");
+
+      RC rc2 = record_handler_->update_record(old_record);
+      if (rc2 != RC::SUCCESS) {
+        LOG_ERROR("Failed to rollback record data when update index entries failed. table name=%s, rc=%d:%s",
+            name(),
+            rc2,
+            strrc(rc2));
+      }
+      return rc;
+    }
+  }
+  return rc;
+}
+
+RC Table::update_record(Trx *trx, const char *field_name, const Value *value,Record *record)
+{
+  if (nullptr == field_name || nullptr == value) {
+    LOG_ERROR("Invalid argument. attribute name: %s, values=%p", field_name, value);
+    return RC::INVALID_ARGUMENT;
+  }
+  // check fields
+  const FieldMeta *field = table_meta_.field(field_name);
+  if(nullptr == field) {
+    LOG_WARN("no such field in table: table %s, field %s", table_meta_.name(), field_name);
+    return RC::SCHEMA_FIELD_NOT_EXIST;
+  }
+  // check fields type
+  if (field->type() != value->type) {
+    LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
+        table_meta_.name(),
+        field->name(),
+        field->type(),
+        value->type);
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  }
+
+  // 复制所有字段的值
+  Record new_recold(*record);
+  int record_size = table_meta_.record_size();
+  char *record_data = new char[record_size];
+
+  memcpy(record_data, record->data(), record_size);
+
+  // update correspond field
+  size_t copy_len = field->len();
+  if (field->type() == CHARS) {
+    const size_t data_len = strlen((const char *)value->data);
+    if (copy_len > data_len) {
+      copy_len = data_len + 1;
+    }
+  }
+  const char* fileName = (char*)value->data;
+  memcpy(record_data + field->offset(), value->data, copy_len);
+
+  new_recold.set_data(record_data);
+  // record.valid = true;
+  RC rc = update_record(trx,field_name, record, &new_recold);
+  delete[] record_data;
+  return rc;
+}
+
 class RecordDeleter {
 public:
   RecordDeleter(Table &table, Trx *trx) : table_(table), trx_(trx)
@@ -820,6 +918,23 @@ RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error
   }
   return rc;
 }
+
+RC Table::update_entry_of_indexes(const char *field_name, const char *old_record, const char *new_record, const RID &rid) {
+  RC rc = RC::SUCCESS;
+  Index *index = find_index_by_field(field_name);
+  if(index != nullptr) {
+    rc = index->delete_entry(old_record, &rid);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+    rc = index->insert_entry(new_record, &rid);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+  }
+  return RC::SUCCESS;
+}
+
 
 Index *Table::find_index(const char *index_name) const
 {
