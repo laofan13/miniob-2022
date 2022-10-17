@@ -57,6 +57,24 @@ void value_init_string(Value *value, const char *v)
   value->type = CHARS;
   value->data = strdup(v);
 }
+bool check_date(int y, int m, int d) {
+  static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool leap = (y%400==0 || (y%100 && y%4==0));
+  return y > 0
+      && (m > 0)&&(m <= 12)
+      && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
+}
+void value_init_date(Value *value, const char *v) {
+  value->type = DATES;
+  int y, m, d;
+  sscanf(v, "'%d-%d-%d'", &y, &m, &d);
+  if(!check_date(y,m,d)) {
+    return value_init_string(value, v);
+  }
+  int dv = y * 10000 + m * 100 + d;
+  value->data = malloc(sizeof(dv));
+  memcpy(value->data, &dv, sizeof(dv));
+}
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;

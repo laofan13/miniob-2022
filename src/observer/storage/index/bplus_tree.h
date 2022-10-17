@@ -46,14 +46,16 @@ public:
     switch (attr_type_) {
     case INTS: {
       return compare_int((void *)v1, (void *)v2);
-    }
-      break;
+    }break;
     case FLOATS: {
       return compare_float((void *)v1, (void *)v2);
-    }
+    }break;
+    case DATES: {
+      return compare_int((void *)v1, (void *)v2);
+    }break;
     case CHARS: {
       return compare_string((void *)v1, attr_length_, (void *)v2, attr_length_);
-    }
+    }break;
     default:{
       LOG_ERROR("unknown attr type. %d", attr_type_);
       abort();
@@ -109,21 +111,23 @@ public:
     switch (attr_type_) {
     case INTS: {
       return std::to_string(*(int*)v);
-    }
-      break;
+    }break;
     case FLOATS: {
       return std::to_string(*(float*)v);
-    }
+    }break;
+    case DATES: {
+      return std::to_string(*(int*)v);
+    }break;
     case CHARS: {
       std::string str;
       for (int i = 0; i < attr_length_; i++) {
-	if (v[i] == 0) {
-	  break;
-	}
-	str.push_back(v[i]);
+        if (v[i] == 0) {
+          break;
+        }
+        str.push_back(v[i]);
       }
       return str;
-    }
+    }break;
     default:{
       LOG_ERROR("unknown attr type. %d", attr_type_);
       abort();

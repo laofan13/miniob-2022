@@ -763,7 +763,6 @@ RC Table::update_record(Trx *trx, const char *field_name, const Value *value,Rec
       copy_len = data_len + 1;
     }
   }
-  const char* fileName = (char*)value->data;
   memcpy(record_data + field->offset(), value->data, copy_len);
 
   new_recold.set_data(record_data);

@@ -28,6 +28,12 @@ void TupleCell::to_string(std::ostream &os) const
     float v = *(float *)data_;
     os << double2string(v);
   } break;
+  case DATES: {
+    int value = *(int *)data_;
+    char buf[16] = {0};
+    snprintf(buf,sizeof(buf),"%04d-%02d-%02d",value/10000,(value%10000)/100,value%100);
+    os << buf;
+  } break;
   case CHARS: {
     for (int i = 0; i < length_; i++) {
       if (data_[i] == '\0') {
@@ -48,6 +54,7 @@ int TupleCell::compare(const TupleCell &other) const
     switch (this->attr_type_) {
     case INTS: return compare_int(this->data_, other.data_);
     case FLOATS: return compare_float(this->data_, other.data_);
+    case DATES: return compare_int(this->data_, other.data_);
     case CHARS: return compare_string(this->data_, this->length_, other.data_, other.length_);
     default: {
       LOG_WARN("unsupported type: %d", this->attr_type_);
