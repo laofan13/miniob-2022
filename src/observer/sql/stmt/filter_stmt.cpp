@@ -126,7 +126,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   if(left_type != right_type) {
     LOG_WARN("Inconsistent comparison types");
-    return RC::INVALID_ARGUMENT;
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 
   filter_unit = new FilterUnit;

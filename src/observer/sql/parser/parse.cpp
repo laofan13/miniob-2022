@@ -60,9 +60,10 @@ void value_init_string(Value *value, const char *v)
 bool check_date(int y, int m, int d) {
   static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   bool leap = (y%400==0 || (y%100 && y%4==0));
-  return y > 0
-      && (m > 0)&&(m <= 12)
-      && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
+  if(y < 1970 || y > 2038 || (y = 2038 && m > 2)) {
+    return false;
+  }
+  return (m > 0)&&(m <= 12) && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
 }
 void value_init_date(Value *value, const char *v) {
   value->type = DATES;
