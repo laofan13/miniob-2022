@@ -49,3 +49,14 @@ python3 miniob_test.py \
         --code-type = none \
         --debug \
         --log=stdout
+
+2. COMPARE DATE DATA
+SELECT * FROM date_table WHERE u_date>'2020-1-20';
+1 | 2020-01-21
++11 | 2042-02-02
+2 | 2020-10-21
+9 | 2038-01-19
+-11 | 2042-02-02
+ID | U_DATE
+SELECT * FROM date_table WHERE u_date<'2019-12-31';
++10 | 1950-02-02
