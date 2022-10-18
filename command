@@ -62,3 +62,15 @@ python3 miniob_test.py \
         --code-type = none \
         --debug \
         --log=stdout
+
+
+SELECT Select_tables_2.age FROM Select_tables_1,Select_tables_2 WHERE Select_tables_1.age<18 AND Select_tables_2.u_name='c' AND Select_tables_1.id=Select_tables_2.id;
+21
+SELECT_TABLES_2.AGE
+-SELECT Select_tables_1.id,Select_tables_4.u_name,Select_tables_5.res FROM Select_tables_1,Select_tables_4,Select_tables_5 where Select_tables_4.age>2 AND Select_tables_5.u_name!='f';
+-1 | B | 10
+-1 | B | 12
+-1 | D | 10
+-1 | D | 12
+-2 | B | 10
+-2 | B | 12

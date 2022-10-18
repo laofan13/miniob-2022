@@ -32,7 +32,7 @@ typedef struct {
 typedef enum {
   EQUAL_TO,     //"="     0
   LESS_EQUAL,   //"<="    1
-  NOT_EQUAL,    //"<>"    2
+  NOT_EQUAL,    //"!="    2
   LESS_THAN,    //"<"     3
   GREAT_EQUAL,  //">="    4
   GREAT_THAN,   //">"     5
