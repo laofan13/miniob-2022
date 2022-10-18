@@ -78,10 +78,10 @@ public:
   RowTuple() = default;
   virtual ~RowTuple()
   {
-    for (TupleCellSpec *spec : speces_) {
-      delete spec;
-    }
-    speces_.clear();
+    // for (TupleCellSpec *spec : speces_) {
+    //   delete spec;
+    // }
+    // speces_.clear();
   }
   
   void set_record(Record *record)
@@ -94,7 +94,7 @@ public:
     table_ = table;
     this->speces_.reserve(fields->size());
     for (const FieldMeta &field : *fields) {
-      speces_.push_back(new TupleCellSpec(new FieldExpr(table, &field)));
+      speces_.push_back(std::make_shared<TupleCellSpec>(new FieldExpr(table, &field)));
     }
   }
 
@@ -110,7 +110,7 @@ public:
       return RC::INVALID_ARGUMENT;
     }
 
-    const TupleCellSpec *spec = speces_[index];
+    const TupleCellSpec *spec = speces_[index].get();;
     FieldExpr *field_expr = (FieldExpr *)spec->expression();
     const FieldMeta *field_meta = field_expr->field().meta();
     cell.set_type(field_meta->type());
@@ -131,7 +131,7 @@ public:
       const FieldExpr * field_expr = (const FieldExpr *)speces_[i]->expression();
       const Field &field = field_expr->field();
       if (0 == strcmp(field_name, field.field_name())) {
-	return cell_at(i, cell);
+	      return cell_at(i, cell);
       }
     }
     return RC::NOTFOUND;
@@ -143,7 +143,7 @@ public:
       LOG_WARN("invalid argument. index=%d", index);
       return RC::INVALID_ARGUMENT;
     }
-    spec = speces_[index];
+    spec = speces_[index].get();
     return RC::SUCCESS;
   }
 
@@ -159,20 +159,81 @@ public:
 private:
   Record *record_ = nullptr;
   const Table *table_ = nullptr;
-  std::vector<TupleCellSpec *> speces_;
+  std::vector<std::shared_ptr<TupleCellSpec>> speces_;
 };
 
-/*
+
 class CompositeTuple : public Tuple
 {
 public:
-  int cell_num() const override; 
-  RC  cell_at(int index, TupleCell &cell) const = 0;
+  CompositeTuple() = default;
+  virtual ~CompositeTuple()= default;
+  
+  int cell_num() const override{
+    return cell_num_;
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override{
+    if (index < 0 || index >= static_cast<int>(cell_num_)) {
+      return RC::GENERIC_ERROR;
+    }
+    if (tuples_.size() == 0) {
+      return RC::GENERIC_ERROR;
+    }
+
+    for(Tuple *tuple: tuples_) {
+      int newIdx = index - tuple->cell_num();
+      if(newIdx < 0) {
+        return tuple->cell_at(index,cell);
+      }
+      index = newIdx;
+    }
+    return RC::GENERIC_ERROR;
+  }
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    RC rc = RC::SUCCESS;
+    for(Tuple *tuple: tuples_) {
+      rc = tuple->find_cell(field,cell);
+      if(rc == SUCCESS) {
+        return rc;
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    if (index < 0 || index >= static_cast<int>(cell_num_)) {
+      return RC::GENERIC_ERROR;
+    }
+    if (tuples_.size() == 0) {
+      return RC::GENERIC_ERROR;
+    }
+    for(Tuple *tuple: tuples_) {
+      int newIdx = index - tuple->cell_num();
+      if(newIdx < 0) {
+        return tuple->cell_spec_at(index,spec);
+      }
+      index = newIdx;
+    }
+    return RC::GENERIC_ERROR;
+  }
+
+  void add_tuple(Tuple *tuple) {
+    cell_num_ += tuple->cell_num();
+    tuples_.push_back(tuple);
+  }
+
+  void clear_tuple() {
+    tuples_.clear();
+  }
+
 private:
   int cell_num_ = 0;
   std::vector<Tuple *> tuples_;
 };
-*/
 
 class ProjectTuple : public Tuple
 {

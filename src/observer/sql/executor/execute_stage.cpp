@@ -33,6 +33,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/project_operator.h"
 #include "sql/operator/update_operator.h"
+#include "sql/operator/descartes_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -249,6 +250,30 @@ void print_tuple_header(std::ostream &os, const ProjectOperator &oper)
     os << '\n';
   }
 }
+
+void print_tuple_header_with_table(std::ostream &os, const ProjectOperator &oper)
+{
+  const int cell_num = oper.tuple_cell_num();
+  const TupleCellSpec *cell_spec = nullptr;
+  for (int i = 0; i < cell_num; i++) {
+    oper.tuple_cell_spec_at(i, cell_spec);
+    if (i != 0) {
+      os << " | ";
+    }
+
+    auto exper = (FieldExpr*)cell_spec->expression();
+
+    if (cell_spec->alias()) {
+      os << exper->table_name();
+      os << ".";
+      os <<cell_spec->alias();
+    }
+  }
+  if (cell_num > 0) {
+    os << '\n';
+  }
+}
+
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
   TupleCell cell;
@@ -290,8 +315,11 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
     Expression *left = filter_unit->left();
     Expression *right = filter_unit->right();
     if (left->type() == ExprType::FIELD && right->type() == ExprType::VALUE) {
+
     } else if (left->type() == ExprType::VALUE && right->type() == ExprType::FIELD) {
       std::swap(left, right);
+    } else { // If both are field types
+      continue;
     }
     FieldExpr &left_field_expr = *(FieldExpr *)left;
     const Field &field = left_field_expr.field();
@@ -393,11 +421,59 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
+RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+  RC rc = RC::SUCCESS;
+
+  DescartesOperator descartes_operator(select_stmt->filter_stmt());
+  for(Table *table: select_stmt->tables()) {
+    Operator *scan_oper = new TableScanOperator(table);
+    PredicateOperator* pred_oper = new PredicateOperator(select_stmt->filter_stmt());
+    pred_oper->add_child(scan_oper);
+    descartes_operator.add_child(pred_oper);
+  }
+
+  ProjectOperator project_oper;
+  project_oper.add_child(&descartes_operator);
+  for (const Field &field : select_stmt->query_fields()) {
+    project_oper.add_projection(field.table(), field.meta());
+  }
+  rc = project_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+  std::stringstream ss;
+  print_tuple_header_with_table(ss, project_oper);
+  while ((rc = project_oper.next()) == RC::SUCCESS) {
+    // get current record
+    // write to response
+    Tuple * tuple = project_oper.current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+    tuple_to_string(ss, *tuple);
+    ss << std::endl;
+  }
+  session_event->set_response(ss.str());
+
+  return rc;
+}
+
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
+
+  if(select_stmt->tables().size() > 1) {
+    return do_select_dcartesian(sql_event);
+  }
+
   if (select_stmt->tables().size() != 1) {
     LOG_WARN("select more than 1 tables is not supported");
     rc = RC::UNIMPLENMENT;

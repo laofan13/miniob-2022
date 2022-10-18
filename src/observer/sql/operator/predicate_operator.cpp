@@ -71,8 +71,13 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     CompOp comp = filter_unit->comp();
     TupleCell left_cell;
     TupleCell right_cell;
-    left_expr->get_value(tuple, left_cell);
-    right_expr->get_value(tuple, right_cell);
+
+    if(left_expr->get_value(tuple, left_cell) != RC::SUCCESS) {
+      continue;
+    }
+    if(right_expr->get_value(tuple, right_cell) != RC::SUCCESS) {
+      continue;
+    }
 
     const int compare = left_cell.compare(right_cell);
     bool filter_result = false;
