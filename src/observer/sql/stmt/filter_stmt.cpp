@@ -91,8 +91,6 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   Expression *left = nullptr;
   Expression *right = nullptr;
-  AttrType left_type = UNDEFINED;
-  AttrType right_type = UNDEFINED;
   if (condition.left_is_attr) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
@@ -102,10 +100,8 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     left = new FieldExpr(table, field);
-    left_type = field->type();
   } else {
     left = new ValueExpr(condition.left_value);
-    left_type = condition.left_value.type;
   }
 
   if (condition.right_is_attr) {
@@ -118,15 +114,8 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
       return rc;
     }
     right = new FieldExpr(table, field);
-    right_type = field->type();
   } else {
     right = new ValueExpr(condition.right_value);
-    right_type = condition.right_value.type;
-  }
-
-  if(left_type != right_type) {
-    LOG_WARN("Inconsistent comparison types");
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 
   filter_unit = new FilterUnit;
