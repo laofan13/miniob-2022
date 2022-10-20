@@ -429,9 +429,9 @@ RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
   DescartesOperator descartes_operator(select_stmt->filter_stmt());
   for(Table *table: select_stmt->tables()) {
     Operator *scan_oper = new TableScanOperator(table);
-    PredicateOperator* pred_oper = new PredicateOperator(select_stmt->filter_stmt());
-    pred_oper->add_child(scan_oper);
-    descartes_operator.add_child(pred_oper);
+    // PredicateOperator* pred_oper = new PredicateOperator(select_stmt->filter_stmt());
+    // pred_oper->add_child(scan_oper);
+    descartes_operator.add_child(scan_oper);
   }
 
   ProjectOperator project_oper;
