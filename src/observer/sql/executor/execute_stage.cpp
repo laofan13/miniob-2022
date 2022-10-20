@@ -426,16 +426,18 @@ RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
-  DescartesOperator descartes_operator(select_stmt->filter_stmt());
-  for(Table *table: select_stmt->tables()) {
-    Operator *scan_oper = new TableScanOperator(table);
-    // PredicateOperator* pred_oper = new PredicateOperator(select_stmt->filter_stmt());
-    // pred_oper->add_child(scan_oper);
-    descartes_operator.add_child(scan_oper);
+  std::vector<TableScanOperator *> scan_opers;
+  for (auto table : select_stmt->tables()) {
+    scan_opers.push_back(new TableScanOperator(table));
   }
+  DescartesOperator descartes_operator(scan_opers);
+
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(&descartes_operator);
 
   ProjectOperator project_oper;
-  project_oper.add_child(&descartes_operator);
+  project_oper.add_child(&pred_oper);
+
   for (const Field &field : select_stmt->query_fields()) {
     project_oper.add_projection(field.table(), field.meta());
   }

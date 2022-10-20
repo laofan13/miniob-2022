@@ -16,18 +16,43 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include "sql/operator/operator.h"
-#include "rc.h"
+#include "sql/operator/table_scan_operator.h"
 
 class FilterStmt;
 
 class DescartesOperator : public Operator
 {
 public:
-  DescartesOperator(FilterStmt *filter_stmt)
-    : filter_stmt_(filter_stmt)
-  {}
+  DescartesOperator(std::vector<TableScanOperator*> scan_opers)
+  :scan_opers_(scan_opers)
+  {
+    total_num_ = 1;
+    current_index_ = 0;
+  }
 
-  virtual ~DescartesOperator() = default;
+  virtual ~DescartesOperator(){
+    for (auto scan_oper : scan_opers_) {
+      delete scan_oper;
+    }
+    scan_opers_.clear();
+
+    for (auto &vec_tuples: table_tuples) {
+      for (auto tuple: vec_tuples) {
+        delete tuple;
+      }
+      vec_tuples.clear();
+    }
+    table_tuples.clear();
+
+    for (auto &vec_records: table_records) {
+      for (auto record: vec_records) {
+        delete record;
+      }
+      vec_records.clear();
+    }
+    table_records.clear();
+
+  }
 
   RC open() override;
   RC next() override;
@@ -37,14 +62,13 @@ public:
   //int tuple_cell_num() const override;
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override;
 private:
-  void descartes(int i,std::vector<Tuple*> cur_result);
-  bool do_predicate(CompositeTuple &tuple) ;
   
 private:
-  FilterStmt *filter_stmt_ = nullptr;
-  std::vector<std::vector<Record> > dim_record_;
-  std::vector<std::vector<RowTuple> > dim_tuples_;
-  std::vector<std::vector<Tuple*> > descartes_result_;
-  int pos_ = 0;
+  std::vector<TableScanOperator*> scan_opers_;
+   std::vector<std::vector<Record*> > table_records;
+  std::vector<std::vector<Tuple*> > table_tuples;
+  std::vector<std::pair<int, int>> index_mul_;
+  int total_num_;
+  int current_index_;
   CompositeTuple tuple_;
 };

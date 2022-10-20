@@ -226,7 +226,8 @@ public:
     tuples_.push_back(tuple);
   }
 
-  void clear_tuple() {
+  void clear() {
+    cell_num_ = 0;
     tuples_.clear();
   }
 
