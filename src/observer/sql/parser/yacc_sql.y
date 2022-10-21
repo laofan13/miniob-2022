@@ -20,7 +20,8 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-	char id[MAX_NUM];
+  AggrType aggrOp;
+  char id[MAX_NUM];
 } ParserContext;
 
 //获取子串
@@ -105,6 +106,10 @@ ParserContext *get_context(yyscan_t scanner)
         LE
         GE
         NE
+		MAX
+		MIN
+		COUNT
+		AVG
 
 %union {
   struct _Attr *attr;
@@ -364,6 +369,22 @@ select:				/*  select 语句的语法解析树*/
 			CONTEXT->select_length=0;
 			CONTEXT->value_length = 0;
 	}
+	|SELECT aggr_attr FROM ID rel_list where SEMICOLON
+		{
+			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
+			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
+
+			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+
+			CONTEXT->ssql->flag=SCF_SELECT;//"select";
+			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
+
+			//临时变量清零
+			CONTEXT->condition_length=0;
+			CONTEXT->from_length=0;
+			CONTEXT->select_length=0;
+			CONTEXT->value_length = 0;
+	}
 	;
 
 select_attr:
@@ -407,6 +428,52 @@ rel_list:
 				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
 		  }
     ;
+
+aggr_attr:
+	aggr_value aggr_list {
+
+	};
+
+aggr_list:
+	/* empty */
+    | COMMA aggr_value aggr_list {	
+				
+	}
+    ;
+
+aggr_value:
+	aggrOp LBRACE STAR RBRACE {
+		AggrAttr aggr;
+		aggr.aggr_type = CONTEXT->aggrOp;
+		relation_attr_init(&aggr.rel_attr, NULL, "*");
+		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+	}
+	|aggrOp LBRACE ID RBRACE {
+		AggrAttr aggr;
+		aggr.aggr_type = CONTEXT->aggrOp;
+		relation_attr_init(&aggr.rel_attr, NULL, $3);
+		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+	}
+	|aggrOp LBRACE ID DOT ID RBRACE {
+		AggrAttr aggr;
+		aggr.aggr_type = CONTEXT->aggrOp;
+		relation_attr_init(&aggr.rel_attr, $3, $5);
+		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+	}
+	|aggrOp LBRACE NUMBER RBRACE {
+		AggrAttr aggr;
+		aggr.aggr_type = CONTEXT->aggrOp;
+		relation_attr_init(&aggr.rel_attr, NULL, "*");
+		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+	}
+
+aggrOp:
+	 MAX { CONTEXT->aggrOp = MAX_FUNC; }
+    | MIN { CONTEXT->aggrOp = MIN_FUNC; }
+    | COUNT{ CONTEXT->aggrOp = COUNT_FUNC; }
+    | AVG { CONTEXT->aggrOp = AVG_FUNC; }
+    ;
+
 where:
     /* empty */ 
     | WHERE condition condition_list {	

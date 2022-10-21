@@ -67,10 +67,26 @@ typedef struct _Condition {
   Value right_value;   // right-hand side value if right_is_attr = FALSE
 } Condition;
 
+typedef enum
+{
+  MAX_FUNC,
+  MIN_FUNC,
+  COUNT_FUNC,
+  AVG_FUNC,
+} AggrType;
+
+//属性结构体
+typedef struct {
+  RelAttr rel_attr;
+  AggrType aggr_type;
+} AggrAttr;
+
 // struct of select
 typedef struct {
   size_t attr_num;                // Length of attrs in Select clause
   RelAttr attributes[MAX_NUM];    // attrs in Select clause
+  size_t aggr_num;                
+  AggrAttr aggr_attrs[MAX_NUM];  
   size_t relation_num;            // Length of relations in Fro clause
   char *relations[MAX_NUM];       // relations in From clause
   size_t condition_num;           // Length of conditions in Where clause
@@ -209,6 +225,7 @@ void attr_info_destroy(AttrInfo *attr_info);
 
 void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
+void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_destroy(Selects *selects);

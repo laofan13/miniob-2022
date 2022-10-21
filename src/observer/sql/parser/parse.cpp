@@ -131,6 +131,10 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
 {
   selects->attributes[selects->attr_num++] = *rel_attr;
 }
+void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr)
+{
+  selects->aggr_attrs[selects->aggr_num++] = *aggr_attr;
+}
 void selects_append_relation(Selects *selects, const char *relation_name)
 {
   selects->relations[selects->relation_num++] = strdup(relation_name);
@@ -151,6 +155,11 @@ void selects_destroy(Selects *selects)
     relation_attr_destroy(&selects->attributes[i]);
   }
   selects->attr_num = 0;
+
+  for (size_t i = 0; i < selects->aggr_num; i++) {
+    relation_attr_destroy(&selects->aggr_attrs[i].rel_attr);
+  }
+  selects->aggr_num = 0;
 
   for (size_t i = 0; i < selects->relation_num; i++) {
     free(selects->relations[i]);
