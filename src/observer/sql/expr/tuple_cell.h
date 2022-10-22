@@ -29,6 +29,9 @@ public:
   TupleCell(AttrType attr_type, char *data)
     : attr_type_(attr_type), data_(data)
   {}
+  TupleCell(AttrType attr_type,int length, char *data)
+    : attr_type_(attr_type), length_(length),data_(data)
+  {}
 
   void set_type(AttrType type) { this->attr_type_ = type; }
   void set_length(int length) { this->length_ = length; }

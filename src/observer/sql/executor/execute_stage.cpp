@@ -517,10 +517,10 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
 
   // print header
   print_aggr_field_header(ss,select_stmt->aggr_fields());
+
+  auto aggr_results = aggr_oper.aggr_results();
   bool first_field = true;
-  for(auto &value: aggr_oper.aggregation_values()) {
-    TupleCell cell(value.type,(char *)value.data);
-    cell.set_length(4);
+  for(auto &cell: aggr_results) {
     if (!first_field) {
       ss << " | ";
     } else {

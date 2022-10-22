@@ -171,6 +171,36 @@ void AggrOperator::aggre_value(Tuple *tuple) {
   }
 }
 
+std::vector<TupleCell> AggrOperator::aggr_results() {
+  std::vector<TupleCell> aggr_result;
+
+  auto aggr_fields = select_stmt_->aggr_fields();
+  for(size_t i = 0; i < aggr_fields.size();i++) {
+    AggrField &aggr_field = aggr_fields[i];
+    AggrType aggr_type = aggr_field.aggr_type();
+    AttrType attr_type = aggr_field.attr_type();
+
+    Value &value = aggregation_values_[i];
+
+    if(aggr_type == AVG_FUNC) {
+      if(attr_type == INTS || attr_type == DATES) {
+        *(int *)(value.data) /= tuple_num_;
+      }else if(attr_type == FLOATS) {
+        *(float *)(value.data) /=(float)tuple_num_;
+      }
+    }
+    
+    if(aggr_type == COUNT_FUNC) {
+      aggr_result.push_back(TupleCell(INTS,4,(char *)value.data));
+    }else{
+      aggr_result.push_back(TupleCell(value.type,4,(char *)value.data));
+    }
+
+  }
+
+  return aggr_result;
+}
+
 RC AggrOperator::open()
 {
   if (children_.size() != 1) {
@@ -194,23 +224,6 @@ RC AggrOperator::open()
     }
     tuple_num_++;
     aggre_value(tuple);
-  }
-
-  auto aggr_fields = select_stmt_->aggr_fields();
-  for(size_t i = 0; i < aggr_fields.size();i++) {
-    AggrField &aggr_field = aggr_fields[i];
-    AggrType aggr_type = aggr_field.aggr_type();
-    AttrType attr_type = aggr_field.attr_type();
-
-    Value &value = aggregation_values_[i];
-
-    if(aggr_type == AVG_FUNC) {
-      if(attr_type == INTS || attr_type == DATES) {
-        *(int *)(value.data) /= tuple_num_;
-      }else if(attr_type == FLOATS) {
-        *(float *)(value.data) /=(float)tuple_num_;
-      }
-    } 
   }
 
   return RC::SUCCESS;

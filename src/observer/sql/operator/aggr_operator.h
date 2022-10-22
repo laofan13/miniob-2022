@@ -49,6 +49,8 @@ public:
     return aggregation_values_;
   }
 
+  std::vector<TupleCell> aggr_results();
+
   size_t tuple_num() {
     return tuple_num_;
   }
