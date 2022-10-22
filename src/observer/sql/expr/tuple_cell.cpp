@@ -67,11 +67,13 @@ int TupleCell::compare(const TupleCell &other) const
     float other_data = *(int *)other.data_;
     return compare_float(data_, &other_data);
   }else if (this->attr_type_ == INTS && other.attr_type_ == CHARS) {
-    int other_data = std::atoi((char *)(other.data_));
-    return compare_int(data_, &other_data);
+    float this_data = *(int *)data_;
+    float other_data = std::atof((char *)(other.data_));
+    return compare_float(&this_data, &other_data);
   }else if (this->attr_type_ == CHARS && other.attr_type_ == INTS) {
-    int this_data = std::atoi((char *)(data_));
-    return compare_int(&this_data, other.data_);
+    float this_data = std::atof((char *)(data_));
+    float other_data = *(int *)other.data_;
+    return compare_float(&this_data, &other_data);
   }else if (this->attr_type_ == FLOATS && other.attr_type_ == CHARS) {
     float other_data = std::atof((char *)(other.data_));
     return compare_float(data_, &other_data);
