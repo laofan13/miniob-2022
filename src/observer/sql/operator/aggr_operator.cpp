@@ -41,10 +41,9 @@ void AggrOperator::init_aggregation_value() {
         *(float *)(value.data) = FLT_MIN;
       }else if(attr_type == CHARS) {
         char *str = (char *)value.data;
-        for(int i = 0;i < 3;i++) {
+        for(int i = 0;i < 4;i++) {
           str[i] = 0;
         }
-        str[3] = '\0';
       }
     }break;
     case MIN_FUNC:{
@@ -54,10 +53,9 @@ void AggrOperator::init_aggregation_value() {
         *(float *)(value.data) = FLT_MAX;
       }else if(attr_type == CHARS) {
         char *str = (char *)value.data;
-        for(int i = 0;i < 3;i++) {
+        for(int i = 0;i < 4;i++) {
           str[i] = 127;
         }
-        str[3] = '\0';
       }
     }break;
     case AVG_FUNC:{
@@ -65,6 +63,8 @@ void AggrOperator::init_aggregation_value() {
         *(int *)(value.data) = 0;
       }else if(attr_type == FLOATS) {
         *(float *)(value.data) = 0;
+      }else if(attr_type == CHARS) {
+        *(int *)(value.data) = 0;
       }
     }break;
     case SUM_FUNC:{
@@ -72,6 +72,8 @@ void AggrOperator::init_aggregation_value() {
         *(int *)(value.data) = 0;
       }else if(attr_type == FLOATS) {
         *(float *)(value.data) = 0;
+      }else if(attr_type == CHARS) {
+        *(int *)(value.data) = 0;
       }
     }break;
     default:
@@ -117,11 +119,10 @@ void AggrOperator::aggre_value(Tuple *tuple) {
       }else if(attr_type == CHARS) {
         char *str = (char *)(value.data);
         char *cell_value = (char *)cell.data();
-        if(compare_string(cell_value, 3, str, 3) > 0) {
-          for(int i = 0;i < 3;i++) {
+        if(compare_string(cell_value, 4, str, 4) > 0) {
+          for(int i = 0;i < 4;i++) {
             str[i] = cell_value[i];
           }
-          str[3] = '\0';
         }
       }
     }break;
@@ -139,11 +140,10 @@ void AggrOperator::aggre_value(Tuple *tuple) {
       }else if(attr_type == CHARS) {
         char *str = (char *)(value.data);
         char *cell_value = (char *)cell.data();
-        if(compare_string(cell_value, 3, str, 3) < 0) {
-          for(int i = 0;i < 3;i++) {
+        if(compare_string(cell_value, 4, str, 4) < 0) {
+          for(int i = 0;i < 4;i++) {
             str[i] = cell_value[i];
           }
-          str[3] = '\0';
         }
       }
     }break;
@@ -154,6 +154,10 @@ void AggrOperator::aggre_value(Tuple *tuple) {
       }else if(attr_type == FLOATS) {
         float cell_value = *(float *)cell.data();
         *(float *)(value.data) += cell_value;
+      }else if(attr_type == CHARS) {
+        char *str = (char *)cell.data();;
+        int cell_value = std::atoi(str);
+        *(int *)(value.data) += cell_value;
       }
     }break;
     case SUM_FUNC:{
@@ -163,6 +167,10 @@ void AggrOperator::aggre_value(Tuple *tuple) {
       }else if(attr_type == FLOATS) {
         float cell_value = *(float *)cell.data();
         *(float *)(value.data) += cell_value;
+      }else if(attr_type == CHARS) {
+        char *str = (char *)cell.data();;
+        int cell_value = std::atoi(str);
+        *(int *)(value.data) += cell_value;
       }
     }break;
     default:
@@ -183,8 +191,8 @@ std::vector<TupleCell> AggrOperator::aggr_results() {
     Value &value = aggregation_values_[i];
 
     if(aggr_type == AVG_FUNC) {
-      if(attr_type == INTS || attr_type == DATES) {
-        *(int *)(value.data) /= tuple_num_;
+      if(attr_type == INTS || attr_type == DATES || attr_type == CHARS) {
+        *(float *)(value.data) = 1.0 * (*(int *)(value.data)) / tuple_num_;
       }else if(attr_type == FLOATS) {
         *(float *)(value.data) /=(float)tuple_num_;
       }
@@ -192,6 +200,8 @@ std::vector<TupleCell> AggrOperator::aggr_results() {
     
     if(aggr_type == COUNT_FUNC) {
       aggr_result.push_back(TupleCell(INTS,4,(char *)value.data));
+    }else if(aggr_type == AVG_FUNC){
+      aggr_result.push_back(TupleCell(FLOATS,4,(char *)value.data));
     }else{
       aggr_result.push_back(TupleCell(value.type,4,(char *)value.data));
     }

@@ -151,14 +151,6 @@ static RC get_aggr_fields(Db *db,const Table *table,
         return RC::SCHEMA_FIELD_MISSING;
       }
 
-      const AttrType attr_type = field_meta->type();
-      if(aggr_type == AVG_FUNC || aggr_type == SUM_FUNC) {
-        if(attr_type != INTS && attr_type != FLOATS) {
-          LOG_WARN("aggregation func AVG() must be count if field_type is INTS or FLOATS");
-          return RC::SCHEMA_FIELD_MISSING;
-        }
-      }
-
       AggrField aggr_field(table,field_meta, aggr_type);
       aggr_field.set_field_name(field_name);
       aggr_fields.push_back(aggr_field);
