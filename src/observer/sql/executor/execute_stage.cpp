@@ -33,6 +33,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/project_operator.h"
 #include "sql/operator/update_operator.h"
+#include "sql/operator/aggr_operator.h"
 #include "sql/operator/descartes_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
@@ -274,6 +275,24 @@ void print_tuple_header_with_table(std::ostream &os, const ProjectOperator &oper
   }
 }
 
+void print_aggr_field_header(std::ostream &os, const std::vector<AggrField> &aggr_fields)
+{
+  bool first_field = true;
+  for(auto aggr_field: aggr_fields) {
+    AggrType aggr_type = aggr_field.aggr_type();
+    if (!first_field) {
+      os << " | ";
+    } else {
+      first_field = false;
+    }
+    os << aggr_field.aggrr_type_to_string();
+    os << "(";
+    os << aggr_field.field_name();
+    os << ")";
+  }
+  os << std::endl;
+}
+
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
   TupleCell cell;
@@ -461,8 +480,57 @@ RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
     tuple_to_string(ss, *tuple);
     ss << std::endl;
   }
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    project_oper.close();
+  } else {
+    rc = project_oper.close();
+  }
   session_event->set_response(ss.str());
 
+  return rc;
+}
+
+RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+
+  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
+  if (nullptr == scan_oper) {
+    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+  }
+
+  DEFER([&] () {delete scan_oper;});
+
+  // PredicateOperator pred_oper(select_stmt->filter_stmt());
+  // pred_oper.add_child(scan_oper);
+
+  AggrOperator aggr_oper(select_stmt);
+  aggr_oper.add_child(scan_oper);
+
+  RC rc = aggr_oper.open();
+  if (rc != RC::SUCCESS) {
+    session_event->set_response("FAILURE\n");
+    return rc;
+  } 
+  std::stringstream ss;
+
+  // print header
+  print_aggr_field_header(ss,select_stmt->aggr_fields());
+  bool first_field = true;
+  for(auto &value: aggr_oper.aggregation_values()) {
+    TupleCell cell(value.type,(char *)value.data);
+    cell.set_length(4);
+    if (!first_field) {
+      ss << " | ";
+    } else {
+      first_field = false;
+    }
+    cell.to_string(ss);
+  }
+  ss << std::endl;
+  aggr_oper.close();
+  session_event->set_response(ss.str());
   return rc;
 }
 
@@ -472,6 +540,12 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
+  // 聚合查询
+  if(!select_stmt->aggr_fields().empty()){
+    return do_select_aggregation(sql_event);
+  }
+
+  // 笛卡尔积查询
   if(select_stmt->tables().size() > 1) {
     return do_select_dcartesian(sql_event);
   }
@@ -702,6 +776,7 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   } else {
     session_event->set_response("SUCCESS\n");
   }
+  update_oper.close();
   return rc;
 }
 

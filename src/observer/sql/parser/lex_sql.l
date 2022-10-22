@@ -77,6 +77,7 @@ QUOTE            [\'\"]
 [Mm][Ii][Nn]                                         RETURN_TOKEN(MIN);
 [Cc][Oo][Uu][Nn][Tt]                                 RETURN_TOKEN(COUNT);
 [Aa][Vv][Gg]                                         RETURN_TOKEN(AVG);
+[Ss][Uu][Mm]                                         RETURN_TOKEN(SUM);
 
 {ID}                                                 yylval->string=strdup(yytext); RETURN_TOKEN(ID);
 "("                                                  RETURN_TOKEN(LBRACE);

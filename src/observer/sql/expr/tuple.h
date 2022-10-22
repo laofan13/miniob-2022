@@ -137,6 +137,24 @@ public:
     return RC::NOTFOUND;
   }
 
+  RC find_cell(const AggrField &aggr_field, TupleCell &cell)
+  {
+    const char *table_name = aggr_field.table_name();
+    if (0 != strcmp(table_name, table_->name())) {
+      return RC::NOTFOUND;
+    }
+
+    const char *field_name = aggr_field.field_name();
+    for (size_t i = 0; i < speces_.size(); ++i) {
+      const FieldExpr * field_expr = (const FieldExpr *)speces_[i]->expression();
+      const Field &field = field_expr->field();
+      if (0 == strcmp(field_name, field.field_name())) {
+	      return cell_at(i, cell);
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
   {
     if (index < 0 || index >= static_cast<int>(speces_.size())) {

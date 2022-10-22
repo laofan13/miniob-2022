@@ -47,3 +47,49 @@ private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
 };
+
+class AggrField
+{
+public:
+  AggrField() = default;
+  AggrField(const Table *table, AggrType aggr_type) 
+  : table_(table), aggr_type_(aggr_type)
+  {}
+  AggrField(const Table *table, const FieldMeta *field, AggrType aggr_type) 
+  : table_(table), field_(field), aggr_type_(aggr_type)
+  {}
+
+  const Table *table() const { return table_; }
+  const FieldMeta *meta() const { return field_; }
+
+  AttrType attr_type() const
+  {
+    return field_->type();
+  }
+
+  const char *table_name() const { return table_->name(); }
+  const char *field_name() const { return field_name_; }
+  AggrType aggr_type(){ return aggr_type_; }
+
+  void set_table(const Table *table)
+  {
+    this->table_ = table;
+  }
+  void set_field(const FieldMeta *field)
+  {
+    this->field_ = field;
+  }
+  void set_field_name(const char *field_name)
+  {
+    this->field_name_ = field_name;
+  }
+  const char* aggrr_type_to_string() {
+    static const char *AGGR_TYPE_NAME[] = {"max","min","count","avg","sum"};
+    return AGGR_TYPE_NAME[aggr_type_];
+  }
+private:
+  const Table *table_ = nullptr;
+  const FieldMeta *field_ = nullptr;
+  const char *field_name_ = nullptr;
+  AggrType aggr_type_;
+};

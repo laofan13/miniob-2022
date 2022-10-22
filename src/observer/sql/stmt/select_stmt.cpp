@@ -19,6 +19,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/db.h"
 #include "storage/common/table.h"
 
+#include "storage/common/table.h"
+
 SelectStmt::~SelectStmt()
 {
   if (nullptr != filter_stmt_) {
@@ -121,6 +123,42 @@ static RC get_query_fields(Db *db,std::vector<Table *> &tables,
   return RC::SUCCESS;                          
 }
 
+// 获取聚合字段
+static RC get_aggr_fields(Db *db,const Table *table, 
+                           size_t aggr_num, const AggrAttr *aggr_attrs,
+                           std::vector<AggrField> &aggr_fields){
+
+  // 默认字段
+  auto field_metas = table->table_meta().field_metas();
+  const FieldMeta *default_field = &field_metas->at(0);
+  for (int i = 0; i < aggr_num; i++) {
+    const AggrAttr &aggr_attr = aggr_attrs[i];
+    const char *field_name = aggr_attr.rel_attr.attribute_name;
+    AggrType aggr_type = aggr_attr.aggr_type;
+
+    if(0 == strcmp(field_name, "*")) {
+      if (aggr_type != COUNT_FUNC) {
+        LOG_WARN("aggregation func must be count if field_name is *");
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      AggrField aggr_field(table,default_field, aggr_type);
+      aggr_field.set_field_name(field_name);
+      aggr_fields.push_back(aggr_field);
+    }else{
+      const FieldMeta *field_meta = table->table_meta().field(field_name);
+      if (nullptr == field_meta) {
+        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      AggrField aggr_field(table,field_meta, aggr_type);
+      aggr_field.set_field_name(field_name);
+      aggr_fields.push_back(aggr_field);
+    }
+  }
+
+  return RC::SUCCESS;                          
+}
+
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
   RC rc = RC::SUCCESS;
@@ -137,13 +175,27 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     LOG_WARN("Failed to get table from sql statement");
     return rc;
   }
+
+  if(tables.size() < 1) {
+    LOG_WARN("invalid. I do not know the attr's table.");
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
   
   // collect query fields in `select` statement
   std::vector<Field> query_fields;
-  rc = get_query_fields(db,tables, table_map, select_sql.attr_num, select_sql.attributes, query_fields);
-  if(rc != RC::SUCCESS) {
-    return rc;
+  std::vector<AggrField> aggr_fields;
+  if(select_sql.attr_num > 0) {
+    rc = get_query_fields(db,tables, table_map, select_sql.attr_num, select_sql.attributes, query_fields);
+    if(rc != RC::SUCCESS) {
+      return rc;
+    }
+  }else if(select_sql.aggr_num > 0){
+    rc = get_aggr_fields(db,tables[0],select_sql.aggr_num, select_sql.aggr_attrs, aggr_fields);
+    if(rc != RC::SUCCESS) {
+      return rc;
+    }
   }
+  
 
   Table *default_table = nullptr;
   if (tables.size() == 1) {
@@ -163,6 +215,7 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   SelectStmt *select_stmt = new SelectStmt();
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
+  select_stmt->aggr_fields_.swap(aggr_fields);
   select_stmt->filter_stmt_ = filter_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;

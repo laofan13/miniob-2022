@@ -110,6 +110,7 @@ ParserContext *get_context(yyscan_t scanner)
 		MIN
 		COUNT
 		AVG
+		SUM
 
 %union {
   struct _Attr *attr;
@@ -472,6 +473,7 @@ aggrOp:
     | MIN { CONTEXT->aggrOp = MIN_FUNC; }
     | COUNT{ CONTEXT->aggrOp = COUNT_FUNC; }
     | AVG { CONTEXT->aggrOp = AVG_FUNC; }
+	| SUM { CONTEXT->aggrOp = SUM_FUNC; }
     ;
 
 where:

@@ -73,6 +73,7 @@ typedef enum
   MIN_FUNC,
   COUNT_FUNC,
   AVG_FUNC,
+  SUM_FUNC
 } AggrType;
 
 //属性结构体
