@@ -502,11 +502,11 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
 
   DEFER([&] () {delete scan_oper;});
 
-  // PredicateOperator pred_oper(select_stmt->filter_stmt());
-  // pred_oper.add_child(scan_oper);
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(scan_oper);
 
   AggrOperator aggr_oper(select_stmt);
-  aggr_oper.add_child(scan_oper);
+  aggr_oper.add_child(&pred_oper);
 
   RC rc = aggr_oper.open();
   if (rc != RC::SUCCESS) {
