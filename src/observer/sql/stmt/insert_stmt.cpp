@@ -11,11 +11,15 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by Wangyunlai on 2022/5/22.
 //
+#include<cmath>
+#include <string>
 
 #include "sql/stmt/insert_stmt.h"
 #include "common/log/log.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
+#include "util/util.h"
+
 
 InsertStmt::InsertStmt(Table *table, const InsertRecord *records, int record_amount)
   : table_ (table), records_(records), record_amount_(record_amount)
@@ -54,10 +58,38 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
       const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
       const AttrType field_type = field_meta->type();
       const AttrType value_type = values[i].type;
+      void *data = values[i].data;
+
       if (field_type != value_type) { // TODO try to convert the value type to field type
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+        if (field_type == INTS && value_type == FLOATS) {
+          int val = round(*(float *)data);
+          *(int *)data = val;
+        }else if (field_type == INTS && value_type == CHARS) {
+          int val = std::atoi((char *)(data));
+          *(int *)data = val;
+        }else if (field_type == FLOATS && value_type == INTS) {
+          float val = *(int *)data;
+          *(float *)data = val;
+        }else if (field_type == FLOATS && value_type == CHARS) {
+          float val = std::atof((char *)(data));
+          *(float *)data = val;
+        }else if (field_type == CHARS && value_type == INTS) {
+         std::string s = std::to_string(*(int *)data);
+         char *str = (char *)(data);
+         for(int i =0;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+         }
+        }else if (field_type == CHARS && value_type == FLOATS) {
+         std::string s = double2string(*(float *)data);
+         char *str = (char *)(data);
+         for(int i =0;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+         }
+        }else{
+          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                 table_name, field_meta->name(), field_type, value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
       }
     }
   }
