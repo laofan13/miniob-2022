@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 #include<cmath>
 #include <string>
+#include<sstream>
 
 #include "sql/stmt/insert_stmt.h"
 #include "common/log/log.h"
@@ -76,15 +77,30 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
         }else if (field_type == CHARS && value_type == INTS) {
          std::string s = std::to_string(*(int *)data);
          char *str = (char *)(data);
-         for(int i =0;i < 4 && i < s.size();i++) {
+         int i =0;
+         for(;i < 4 && i < s.size();i++) {
           str[i] = s[i];
          }
+         if(i < 4) {
+           str[i] = '\0';
+         }else{
+           str[4] = '\0';
+         }
+
         }else if (field_type == CHARS && value_type == FLOATS) {
-         std::string s = double2string(*(float *)data);
-         char *str = (char *)(data);
-         for(int i =0;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-         }
+          std::ostringstream oss;
+          oss<<*(float *)data;
+          std::string s(oss.str());
+          char *str = (char *)(data);
+          int i =0;
+          for(;i < 4 && i < s.size();i++) {
+            str[i] = s[i];
+          }
+          if(i < 4) {
+            str[i] = '\0';
+          }else{
+            str[4] = '\0';
+          }
         }else{
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                 table_name, field_meta->name(), field_type, value_type);
