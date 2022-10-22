@@ -138,7 +138,7 @@ static RC get_aggr_fields(Db *db,const Table *table,
 
     if(0 == strcmp(field_name, "*")) {
       if (aggr_type != COUNT_FUNC) {
-        LOG_WARN("aggregation func must be count if field_name is *");
+        LOG_WARN("aggregation func COUNT() must be count if field_name is *");
         return RC::SCHEMA_FIELD_MISSING;
       }
       AggrField aggr_field(table,default_field, aggr_type);
@@ -150,6 +150,15 @@ static RC get_aggr_fields(Db *db,const Table *table,
         LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
         return RC::SCHEMA_FIELD_MISSING;
       }
+
+      const AttrType attr_type = field_meta->type();
+      if(aggr_type == AVG_FUNC || aggr_type == SUM_FUNC) {
+        if(attr_type != INTS && attr_type != FLOATS) {
+          LOG_WARN("aggregation func AVG() must be count if field_type is INTS or FLOATS");
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+      }
+
       AggrField aggr_field(table,field_meta, aggr_type);
       aggr_field.set_field_name(field_name);
       aggr_fields.push_back(aggr_field);
