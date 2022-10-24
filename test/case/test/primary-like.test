@@ -1,0 +1,14 @@
+-- echo initialization
+
+CREATE TABLE like_table (id int, name char(32));
+
+INSERT INTO like_table VALUES(1,"apple");
+INSERT INTO like_table VALUES(7,"coconut");
+INSERT INTO like_table VALUES(10,"cherry");
+INSERT INTO like_table VALUES(11,"pineapple");
+
+SELECT * FROM like_table;
+
+SELECT * FROM like_table WHERE name LIKE '%e';
+
+SELECT * FROM like_table WHERE name LIKE '____e';

@@ -79,7 +79,7 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
       continue;
     }
 
-    const int compare = left_cell.compare(right_cell);
+    int compare = left_cell.compare(right_cell);
     bool filter_result = false;
     switch (comp) {
     case EQUAL_TO: {
@@ -99,6 +99,14 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     } break;
     case GREAT_THAN: {
       filter_result = (compare > 0);
+    } break;
+    case LIKE_TO: {
+      compare = left_cell.like_match(right_cell);
+      filter_result = (0 == compare);
+    } break;
+    case NOT_LIKE: {
+      compare = left_cell.like_match(right_cell);
+      filter_result = (compare != 0);
     } break;
     default: {
       LOG_WARN("invalid compare type: %d", comp);

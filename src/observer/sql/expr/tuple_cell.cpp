@@ -18,6 +18,9 @@ See the Mulan PSL v2 for more details. */
 #include "util/comparator.h"
 #include "util/util.h"
 
+#include <string>
+#include <regex>
+
 void TupleCell::to_string(std::ostream &os) const
 {
   switch (attr_type_) {
@@ -81,6 +84,34 @@ int TupleCell::compare(const TupleCell &other) const
     float this_data = std::atof((char *)(data_));
     return compare_float(&this_data, other.data_);
   }
+  LOG_WARN("not supported");
+  return -1; // TODO return rc?
+}
+
+int TupleCell::like_match(const TupleCell &other) const
+{
+  if (this->attr_type_ == other.attr_type_) {
+   if(this->attr_type_ != CHARS) {
+    LOG_WARN("like match unsupported type: %d", this->attr_type_);
+    return -1;
+   }
+   char *s = (char *)this->data_;
+   char *t = (char *)other.data();
+   std::string str;
+   for(int i =0;i < other.length();i++) {
+    if(t[i] == '%') {
+      str.push_back('.');
+      str.push_back('*');
+    }else if(t[i] == '_') {
+      str.push_back('.');
+    }else{
+      str.push_back(t[i]);
+    }
+   }
+   std::regex pattern(str);
+   int ret = std::regex_match(s,pattern);
+   return !ret;
+  } 
   LOG_WARN("not supported");
   return -1; // TODO return rc?
 }
