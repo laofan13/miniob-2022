@@ -92,6 +92,8 @@ typedef struct {
   AggrAttr aggr_attrs[MAX_NUM];  
   size_t relation_num;            // Length of relations in Fro clause
   char *relations[MAX_NUM];       // relations in From clause
+  size_t join_num;              // Length of conditions in Where clause
+  Condition join_conditions[MAX_NUM];  // conditions in Where clause
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
 } Selects;
@@ -231,6 +233,7 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void selects_append_join_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num);

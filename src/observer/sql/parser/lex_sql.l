@@ -73,6 +73,9 @@ QUOTE            [\'\"]
 [Dd][Aa][Tt][Aa]                                     RETURN_TOKEN(DATA);
 [Ii][Nn][Ff][Ii][Ll][Ee]                             RETURN_TOKEN(INFILE);
 
+[Ii][Nn][Nn][Ee][Rr]                                 RETURN_TOKEN(INNER);
+[Jj][Oo][Ii][Nn]                                     RETURN_TOKEN(JOIN);
+
 [Mm][Aa][Xx]                                         RETURN_TOKEN(MAX);
 [Mm][Ii][Nn]                                         RETURN_TOKEN(MIN);
 [Cc][Oo][Uu][Nn][Tt]                                 RETURN_TOKEN(COUNT);

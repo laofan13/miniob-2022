@@ -149,6 +149,15 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
   selects->condition_num = condition_num;
 }
 
+void selects_append_join_conditions(Selects *selects, Condition conditions[], size_t condition_num)
+{
+  assert(condition_num <= sizeof(selects->join_conditions) / sizeof(selects->join_conditions[0]));
+  for (size_t i = 0; i < condition_num; i++) {
+    selects->join_conditions[i] = conditions[i];
+  }
+  selects->join_num = condition_num;
+}
+
 void selects_destroy(Selects *selects)
 {
   for (size_t i = 0; i < selects->attr_num; i++) {
@@ -171,6 +180,11 @@ void selects_destroy(Selects *selects)
     condition_destroy(&selects->conditions[i]);
   }
   selects->condition_num = 0;
+
+   for (size_t i = 0; i < selects->join_num; i++) {
+    condition_destroy(&selects->join_conditions[i]);
+  }
+  selects->join_num = 0;
 }
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num)

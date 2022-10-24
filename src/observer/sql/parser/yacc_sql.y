@@ -113,6 +113,8 @@ ParserContext *get_context(yyscan_t scanner)
 		SUM
 		NOT
 		LIKE
+		INNER
+		JOIN
 
 %union {
   struct _Attr *attr;
@@ -356,7 +358,7 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where SEMICOLON
+    SELECT select_attr FROM ID relation where SEMICOLON
 		{
 			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
@@ -425,13 +427,6 @@ attr_list:
   	  }
   	;
 
-rel_list:
-    /* empty */
-    | COMMA ID rel_list {	
-				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
-		  }
-    ;
-
 aggr_attr:
 	aggr_value aggr_list {
 
@@ -477,6 +472,34 @@ aggrOp:
     | AVG { CONTEXT->aggrOp = AVG_FUNC; }
 	| SUM { CONTEXT->aggrOp = SUM_FUNC; }
     ;
+
+relation:
+	/* empty */
+	|COMMA ID rel_list {
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+	}
+	|INNER JOIN ID ON condition join_list {
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_join_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+		CONTEXT->condition_length = 0;
+	}
+
+rel_list:
+    /* empty */
+    | COMMA ID rel_list {	
+				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+		  }
+    ;
+
+join_list:
+	/* empty */
+	| INNER JOIN ID ON condition join_list{
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+	}
+	| AND condition join_list {
+
+	}
+	;
 
 where:
     /* empty */ 
