@@ -115,6 +115,7 @@ ParserContext *get_context(yyscan_t scanner)
 		LIKE
 		INNER
 		JOIN
+		UNIQUE
 
 %union {
   struct _Attr *attr;
@@ -226,6 +227,12 @@ create_index:		/*create index 语句的语法解析树*/
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
+		}
+	|CREATE UNIQUE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON 
+		{
+			CONTEXT->ssql->sstr.create_index.unique = true;
+			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $4, $6, $8);
 		}
     ;
 

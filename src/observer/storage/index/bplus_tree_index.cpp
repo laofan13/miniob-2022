@@ -20,7 +20,7 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
   close();
 }
 
-RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
+RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta,bool unique)
 {
   if (inited_) {
     LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s, field:%s",
@@ -30,7 +30,7 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, co
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_meta);
+  Index::init(index_meta, field_meta,unique);
 
   RC rc = index_handler_.create(file_name, field_meta.type(), field_meta.len());
   if (RC::SUCCESS != rc) {
@@ -58,7 +58,7 @@ RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, cons
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_meta);
+  Index::init(index_meta, field_meta,false);
 
   RC rc = index_handler_.open(file_name);
   if (RC::SUCCESS != rc) {
@@ -90,6 +90,13 @@ RC BplusTreeIndex::close()
 
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {
+  if(unique_) {
+    std::list<RID> rids;
+    RC rc = index_handler_.get_entry(record + field_meta_.offset(), field_meta_.len(), rids);
+    if(rc == SUCCESS && rids.size() != 0) {
+      return RC::SCHEMA_INDEX_UNIQUE;
+    }
+  }
   return index_handler_.insert_entry(record + field_meta_.offset(), rid);
 }
 
