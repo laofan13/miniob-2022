@@ -445,14 +445,11 @@ RC ExecuteStage::do_select_join(SQLStageEvent *sql_event) {
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
-  std::vector<TableScanOperator *> scan_opers;
+  std::vector<Operator *> scan_opers;
   for (auto table : select_stmt->tables()) {
     scan_opers.push_back(new TableScanOperator(table));
   }
-  DescartesOperator descartes_operator(scan_opers);
-
-  PredicateOperator join_oper(select_stmt->join_stmt());
-  join_oper.add_child(&descartes_operator);
+  JoinOperator join_oper(scan_opers, select_stmt->join_stmt());
 
   PredicateOperator pred_oper(select_stmt->filter_stmt());
   pred_oper.add_child(&join_oper);

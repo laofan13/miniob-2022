@@ -41,7 +41,7 @@ RC PredicateOperator::next()
       break;
     }
 
-    if (do_predicate(static_cast<RowTuple &>(*tuple))) {
+    if (do_predicate(tuple)) {
       return rc;
     }
   }
@@ -59,7 +59,7 @@ Tuple * PredicateOperator::current_tuple()
   return children_[0]->current_tuple();
 }
 
-bool PredicateOperator::do_predicate(RowTuple &tuple)
+bool PredicateOperator::do_predicate(Tuple *tuple)
 {
   if (filter_stmt_ == nullptr || filter_stmt_->filter_units().empty()) {
     return true;
@@ -72,10 +72,10 @@ bool PredicateOperator::do_predicate(RowTuple &tuple)
     TupleCell left_cell;
     TupleCell right_cell;
 
-    if(left_expr->get_value(tuple, left_cell) != RC::SUCCESS) {
+    if(left_expr->get_value(*tuple, left_cell) != RC::SUCCESS) {
       continue;
     }
-    if(right_expr->get_value(tuple, right_cell) != RC::SUCCESS) {
+    if(right_expr->get_value(*tuple, right_cell) != RC::SUCCESS) {
       continue;
     }
 

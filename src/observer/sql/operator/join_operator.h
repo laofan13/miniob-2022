@@ -9,72 +9,67 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 //
-// Created by WangYunlai on 2021/6/10.
+// Created by lifengfan on 2022/10/11.
 //
+
 
 #pragma once
 
-#include "sql/parser/parse.h"
 #include "sql/operator/operator.h"
-#include "sql/stmt/filter_stmt.h"
-#include "rc.h"
+#include "sql/operator/table_scan_operator.h"
 
-// TODO fixme
+class FilterStmt;
+
 class JoinOperator : public Operator
 {
 public:
-  JoinOperator(Operator *left, Operator *right,FilterUnit *filter_unit):
-    left_(left),right_(right),filter_unit_(filter_unit)
+  JoinOperator(std::vector<Operator*> scan_opers,FilterStmt *filter_stmt)
+  :scan_opers_(scan_opers), filter_stmt_(filter_stmt)
   {
+    total_num_ = 1;
     current_index_ = 0;
-    total_num_ = 0;
   }
 
-  virtual ~JoinOperator() {
-    delete left_;
-    delete right_;
+  virtual ~JoinOperator(){
+    for (auto scan_oper : scan_opers_) {
+      delete scan_oper;
+    }
+    scan_opers_.clear();
 
-    for (auto record: left_record_) {
-      delete record;
+    for (auto &vec_tuples: table_tuples_) {
+      for (auto tuple: vec_tuples) {
+        delete tuple;
+      }
+      vec_tuples.clear();
     }
-    left_record_.clear();
-    for (auto record: right_record_) {
-      delete record;
-    }
-    right_record_.clear();
+    table_tuples_.clear();
 
-    for (auto tuple: left_tuples_) {
-      delete tuple;
+    for (auto &vec_records: table_records_) {
+      for (auto record: vec_records) {
+        delete record;
+      }
+      vec_records.clear();
     }
-    left_tuples_.clear();
+    table_records_.clear();
 
-    for (auto tuple: right_tuples_) {
-      delete tuple;
-    }
-    right_tuples_.clear();
   }
 
   RC open() override;
   RC next() override;
   RC close() override;
 
-   Tuple * current_tuple() override;
+  Tuple * current_tuple() override;
   //int tuple_cell_num() const override;
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override;
 private:
   bool do_predicate(Tuple *tuple);
 private:
-  Operator *left_ = nullptr;
-  Operator *right_ = nullptr;
-  bool round_done_ = true;
-
-  std::vector<Record *> left_record_;
-  std::vector<Record *> right_record_;
-  std::vector<Tuple *> left_tuples_;
-  std::vector<Tuple *> right_tuples_;
-  FilterUnit *filter_unit_ = nullptr;
-
-  int current_index_;
-  int total_num_;
+  std::vector<Operator*> scan_opers_;
+  std::vector<std::vector<Record*>> table_records_;
+  std::vector<std::vector<Tuple*>> table_tuples_;
+  std::vector<std::pair<int, int>> index_mul_;
+  long long total_num_;
+  long long current_index_;
   CompositeTuple tuple_;
+  FilterStmt *filter_stmt_ = nullptr;
 };
