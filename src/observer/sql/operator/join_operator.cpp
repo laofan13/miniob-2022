@@ -49,18 +49,12 @@ RC JoinOperator::next()
       int row_index = (current_index_ / index_mul_[i].second) % index_mul_[i].first;
       auto tuple = vec_tuples[row_index];
       tuple_.add_tuple(tuple);
-
-      if(!do_predicate(&tuple_)) {
-        long long num = 1;
-        for(int j = i;j < table_tuples_.size();j++) {
-          num += table_tuples_[j].size();
-        }
-        current_index_ += num;
-        break;
-      }
+    }
+    if(do_predicate(&tuple_)) {
+      current_index_++;
+      return RC::SUCCESS;
     }
     current_index_++;
-    return RC::SUCCESS;
   }
   return RC::RECORD_EOF;
 }
