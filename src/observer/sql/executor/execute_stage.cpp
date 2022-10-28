@@ -35,6 +35,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/update_operator.h"
 #include "sql/operator/aggr_operator.h"
 #include "sql/operator/descartes_operator.h"
+#include "sql/operator/join_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -279,7 +280,6 @@ void print_aggr_field_header(std::ostream &os, const std::vector<AggrField> &agg
 {
   bool first_field = true;
   for(auto aggr_field: aggr_fields) {
-    AggrType aggr_type = aggr_field.aggr_type();
     if (!first_field) {
       os << " | ";
     } else {
@@ -440,6 +440,60 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
+RC ExecuteStage::do_select_join(SQLStageEvent *sql_event) {
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+  RC rc = RC::SUCCESS;
+
+  std::vector<TableScanOperator *> scan_opers;
+  for (auto table : select_stmt->tables()) {
+    scan_opers.push_back(new TableScanOperator(table));
+  }
+  DescartesOperator descartes_operator(scan_opers);
+
+  PredicateOperator join_oper(select_stmt->join_stmt());
+  join_oper.add_child(&descartes_operator);
+
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(&join_oper);
+
+  ProjectOperator project_oper;
+  project_oper.add_child(&pred_oper);
+
+  for (const Field &field : select_stmt->query_fields()) {
+    project_oper.add_projection(field.table(), field.meta());
+  }
+  rc = project_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+  std::stringstream ss;
+  print_tuple_header_with_table(ss, project_oper);
+  while ((rc = project_oper.next()) == RC::SUCCESS) {
+    // get current record
+    // write to response
+    Tuple * tuple = project_oper.current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+    tuple_to_string(ss, *tuple);
+    ss << std::endl;
+  }
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    project_oper.close();
+  } else {
+    rc = project_oper.close();
+  }
+  session_event->set_response(ss.str());
+
+  return rc;
+}
+
 RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
@@ -543,6 +597,12 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
   // 聚合查询
   if(!select_stmt->aggr_fields().empty()){
     return do_select_aggregation(sql_event);
+  }
+
+  // 内连接查询
+  FilterStmt *join_stmt = select_stmt->join_stmt();
+  if(!join_stmt->filter_units().empty()){
+    return do_select_join(sql_event);
   }
 
   // 笛卡尔积查询

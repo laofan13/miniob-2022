@@ -65,7 +65,7 @@ private:
   
 private:
   std::vector<TableScanOperator*> scan_opers_;
-   std::vector<std::vector<Record*> > table_records;
+  std::vector<std::vector<Record*> > table_records;
   std::vector<std::vector<Tuple*> > table_tuples;
   std::vector<std::pair<int, int>> index_mul_;
   int total_num_;

@@ -212,12 +212,22 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  // create filter statement in `where` statement
+  FilterStmt *join_stmt = nullptr;
+  rc = FilterStmt::create(db, default_table, &table_map,
+           select_sql.join_conditions, select_sql.join_num, join_stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("cannot construct join stmt");
+    return rc;
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->aggr_fields_.swap(aggr_fields);
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->join_stmt_ = join_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;
 }
