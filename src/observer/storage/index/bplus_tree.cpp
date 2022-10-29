@@ -1388,16 +1388,15 @@ char *BplusTreeHandler::make_key(const char *user_key, const RID &rid)
   return key;
 }
 
-char *BplusTreeHandler::make_attr_key(const char *attr_key, const RID &rid)
+char *BplusTreeHandler::make_attr_key(const char *attr_key, int32_t attr_length, const RID &rid)
 {
   char *key = (char *)mem_pool_item_->alloc();
   if (key == nullptr) {
     LOG_WARN("Failed to alloc memory for key.");
     return nullptr;
   }
-  IndexAttr index_attr = file_header_.index_attrs[0];
-  memcpy(key, attr_key, index_attr.attr_length);
-  memcpy(key + file_header_.attr_length, &rid, sizeof(rid));
+  memcpy(key, attr_key, attr_length);
+  memcpy(key + attr_length, &rid, sizeof(rid));
   return key;
 }
 
@@ -1792,9 +1791,9 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
     // }
 
     if (left_inclusive) {
-      left_key = tree_handler_.make_attr_key(fixed_left_key, *RID::min());
+      left_key = tree_handler_.make_attr_key(fixed_left_key, left_len,*RID::min());
     } else {
-      left_key = tree_handler_.make_attr_key(fixed_left_key, *RID::max());
+      left_key = tree_handler_.make_attr_key(fixed_left_key, left_len,*RID::max());
     }
 
     if (fixed_left_key != left_user_key) {
@@ -1857,9 +1856,9 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
     //   }
     // }
     if (right_inclusive) {
-      right_key = tree_handler_.make_attr_key(fixed_right_key, *RID::max());
+      right_key = tree_handler_.make_attr_key(fixed_right_key, right_len, *RID::max());
     } else {
-      right_key = tree_handler_.make_attr_key(fixed_right_key, *RID::min());
+      right_key = tree_handler_.make_attr_key(fixed_right_key, right_len, *RID::min());
     }
 
     if (fixed_right_key != right_user_key) {

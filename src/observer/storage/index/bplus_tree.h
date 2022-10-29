@@ -538,7 +538,7 @@ protected:
 
 private:
   char *make_key(const char *user_key, const RID &rid);
-  char *make_attr_key(const char *attr_key, const RID &rid);
+  char *make_attr_key(const char *attr_key, int32_t attr_length,const RID &rid);
   void  free_key(char *key);
 protected:
   DiskBufferPool *disk_buffer_pool_ = nullptr;

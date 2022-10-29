@@ -11,3 +11,8 @@ INSERT INTO unique_table VALUES (1,2,1);
 
 -- echo 2. select
 -- sort SELECT * FROM unique_table;
+
+CREATE TABLE unique_table2(id1 int, id2 int,id3 int,id4 int);
+CREATE UNIQUE INDEX multi_index on unique_table2(id3,id4);
+INSERT INTO unique_table2 VALUES(2,2,1,1);
+INSERT INTO unique_table2 VALUES(1,1,1,1);
