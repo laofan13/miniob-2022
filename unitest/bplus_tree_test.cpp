@@ -155,7 +155,7 @@ void test_get()
     }
 
     rids.clear();
-    RC rc = handler->get_entry((const char *)&i, 4, rids);
+    RC rc = handler->get_entry((const char *)&i, rids);
 
     ASSERT_EQ(RC::SUCCESS, rc);
     ASSERT_EQ(1, rids.size());
@@ -228,7 +228,7 @@ void test_delete()
       LOG_INFO("Begin to get entry of index, i=%d, rid: %s", i, rid.to_string().c_str());
     }
     rids.clear();
-    rc = handler->get_entry((const char *)&i, 4, rids);
+    rc = handler->get_entry((const char *)&i, rids);
     ASSERT_EQ(RC::SUCCESS, rc);
     int t = i % TIMES;
     if (t == 0 || t == 1) {
@@ -325,12 +325,17 @@ TEST(test_bplus_tree, test_leaf_index_node_handle)
   index_file_header.leaf_max_size = 5;
   index_file_header.attr_length = 4;
   index_file_header.key_length = 4 + sizeof(RID);
-  index_file_header.attr_type = INTS;
+
+  index_file_header.attr_num = 1;
+  IndexAttr &index_attr = index_file_header.index_attrs[0];
+  index_attr.attr_offset = 0;
+  index_attr.attr_length = 4;
+  index_attr.attr_type = INTS;
 
   Frame frame;
 
   KeyComparator key_comparator;
-  key_comparator.init(INTS, 4);
+  key_comparator.init(index_file_header.attr_num,index_file_header.index_attrs, 4);
 
   LeafIndexNodeHandler leaf_node(index_file_header, &frame);
   leaf_node.init_empty();
@@ -384,12 +389,17 @@ TEST(test_bplus_tree, test_internal_index_node_handle)
   index_file_header.leaf_max_size = 5;
   index_file_header.attr_length = 4;
   index_file_header.key_length = 4 + sizeof(RID);
-  index_file_header.attr_type = INTS;
+
+  index_file_header.attr_num = 1;
+  IndexAttr &index_attr = index_file_header.index_attrs[0];
+  index_attr.attr_offset = 0;
+  index_attr.attr_length = 4;
+  index_attr.attr_type = INTS;
 
   Frame frame;
 
   KeyComparator key_comparator;
-  key_comparator.init(INTS, 4);
+  key_comparator.init(index_file_header.attr_num,index_file_header.index_attrs, 4);
 
   InternalIndexNodeHandler internal_node(index_file_header, &frame);
   internal_node.init_empty();
@@ -479,7 +489,13 @@ TEST(test_bplus_tree, test_chars)
   const char *index_name = "chars.btree";
   ::remove(index_name);
   handler = new BplusTreeHandler();
-  handler->create(index_name, CHARS, 8, ORDER, ORDER);
+
+  IndexAttr index_attr[MAX_NUM];
+  index_attr[0].attr_length = 8;
+  index_attr[0].attr_offset = 0;
+  index_attr[0].attr_type = CHARS;
+
+  handler->create(index_name, 1, index_attr, ORDER, ORDER);
 
   char keys[][9] = {
     "abcdefg",
@@ -522,7 +538,12 @@ TEST(test_bplus_tree, test_scanner)
   const char *index_name = "scanner.btree";
   ::remove(index_name);
   handler = new BplusTreeHandler();
-  handler->create(index_name, INTS, sizeof(int), ORDER, ORDER);
+
+  IndexAttr index_attr[MAX_NUM];
+  index_attr[0].attr_length = 4;
+  index_attr[0].attr_offset = 0;
+  index_attr[0].attr_type = INTS;
+  handler->create(index_name, 1, index_attr, ORDER, ORDER);
 
   int count = 0;
   RC rc = RC::SUCCESS;
@@ -730,7 +751,12 @@ TEST(test_bplus_tree, test_bplus_tree_insert)
 
   ::remove(index_name);
   handler = new BplusTreeHandler();
-  handler->create(index_name, INTS, sizeof(int), ORDER, ORDER);
+
+  IndexAttr index_attr[MAX_NUM];
+  index_attr[0].attr_length = 4;
+  index_attr[0].attr_offset = 0;
+  index_attr[0].attr_type = INTS;
+  handler->create(index_name, 1, index_attr, ORDER, ORDER);
 
   test_insert();
 

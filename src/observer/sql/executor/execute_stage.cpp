@@ -344,7 +344,8 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
     const Field &field = left_field_expr.field();
     const Table *table = field.table();
     Index *index = table->find_index_by_field(field.field_name());
-    if (index != nullptr) {
+ 
+    if (index != nullptr && index->fields().size() == 1) {
       if (better_filter == nullptr) {
         better_filter = filter_unit;
       } else if (filter_unit->comp() == EQUAL_TO) {
@@ -706,14 +707,14 @@ RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
 {
   SessionEvent *session_event = sql_event->session_event();
   Db *db = session_event->session()->get_current_db();
-  const CreateIndex &create_index = sql_event->query()->sstr.create_index;
+  CreateIndex &create_index = sql_event->query()->sstr.create_index;
   Table *table = db->find_table(create_index.relation_name);
   if (nullptr == table) {
     session_event->set_response("FAILURE\n");
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  RC rc = table->create_index(nullptr, create_index.index_name, create_index.attribute_name, create_index.unique);
+  RC rc = table->create_index(nullptr, create_index.index_name,create_index.attr_num ,create_index.attributes, create_index.unique);
   sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
   return rc;
 }

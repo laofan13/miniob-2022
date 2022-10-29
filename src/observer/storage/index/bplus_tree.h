@@ -29,12 +29,23 @@ See the Mulan PSL v2 for more details. */
 #define EMPTY_RID_PAGE_NUM -1
 #define EMPTY_RID_SLOT_NUM -1
 
+struct IndexAttr{
+  AttrType attr_type;
+  int32_t  attr_offset;
+  int32_t  attr_length;
+};
+
 class AttrComparator
 {
 public:
-  void init(AttrType type, int length)
+  void init(int attr_num, IndexAttr *index_attrs, int length)
   {
-    attr_type_ = type;
+    for(int i = 0;i < attr_num; i++) { // index fields
+      index_attrs_[i].attr_length = index_attrs[i].attr_length;
+      index_attrs_[i].attr_offset = index_attrs[i].attr_offset;
+      index_attrs_[i].attr_type = index_attrs[i].attr_type;
+    }
+    attr_num_ = attr_num;
     attr_length_ = length;
   }
 
@@ -42,37 +53,59 @@ public:
     return attr_length_;
   }
 
+  int attr_num() const {
+    return attr_num_;
+  }
+
   int operator()(const char *v1, const char *v2) const {
-    switch (attr_type_) {
-    case INTS: {
-      return compare_int((void *)v1, (void *)v2);
-    }break;
-    case FLOATS: {
-      return compare_float((void *)v1, (void *)v2);
-    }break;
-    case DATES: {
-      return compare_int((void *)v1, (void *)v2);
-    }break;
-    case CHARS: {
-      return compare_string((void *)v1, attr_length_, (void *)v2, attr_length_);
-    }break;
-    default:{
-      LOG_ERROR("unknown attr type. %d", attr_type_);
-      abort();
+    int ret = 0;
+    int offset = 0;
+    for(size_t i = 0;i < attr_num_; i++) {
+      auto index_attr = index_attrs_[i];
+
+      const char *attr_v1 = v1 + offset;
+      const char *attr_v2 = v2 + offset;
+      offset += index_attr.attr_length;
+
+      switch (index_attr.attr_type) {
+        case INTS: {
+          ret = compare_int((void *)attr_v1, (void *)attr_v2);
+        }break;
+        case FLOATS: {
+          ret = compare_float((void *)attr_v1, (void *)attr_v2);
+        }break;
+        case DATES: {
+          int int_1 = *(int *)attr_v1;
+          int int_2 = *(int *)attr_v2;
+          ret = compare_int((void *)attr_v1, (void *)attr_v2);
+        }break;
+        case CHARS: {
+          ret = compare_string((void *)attr_v1, index_attr.attr_length, (void *)attr_v2, index_attr.attr_length);
+        }break;
+        default:{
+          LOG_ERROR("unknown attr type. %d", index_attr.attr_type);
+          abort();
+        }
+      }
+
+      if(ret != 0) {
+        return ret;
+      }
     }
-    }
+    return ret;
   }
 private:
-  AttrType attr_type_;
-  int attr_length_;
+  int  attr_length_;
+  int  attr_num_;
+  IndexAttr index_attrs_[MAX_NUM];
 };
 
 class KeyComparator
 {
 public:
-  void init(AttrType type, int length)
+  void init(int attr_num, IndexAttr *index_attrs, int length)
   {
-    attr_comparator_.init(type, length);
+    attr_comparator_.init(attr_num, index_attrs ,length);
   }
 
   const AttrComparator &attr_comparator() const {
@@ -97,9 +130,14 @@ private:
 class AttrPrinter
 {
 public:
-  void init(AttrType type, int length)
+  void init(int attr_num, IndexAttr *index_attrs, int length)
   {
-    attr_type_ = type;
+    for(int i = 0;i < attr_num; i++) { // index fields
+      index_attrs_[i].attr_length = index_attrs[i].attr_length;
+      index_attrs_[i].attr_offset = index_attrs[i].attr_offset;
+      index_attrs_[i].attr_type = index_attrs[i].attr_type;
+    }
+    attr_num_ = attr_num;
     attr_length_ = length;
   }
 
@@ -107,44 +145,62 @@ public:
     return attr_length_;
   }
 
+  int attr_num() const {
+    return attr_num_;
+  }
+
   std::string operator()(const char *v) const {
-    switch (attr_type_) {
-    case INTS: {
-      return std::to_string(*(int*)v);
-    }break;
-    case FLOATS: {
-      return std::to_string(*(float*)v);
-    }break;
-    case DATES: {
-      return std::to_string(*(int*)v);
-    }break;
-    case CHARS: {
-      std::string str;
-      for (int i = 0; i < attr_length_; i++) {
-        if (v[i] == 0) {
-          break;
+    std::stringstream ss;
+    int offset = 0;
+    for(size_t i = 0;i < attr_num_; i++) {
+      auto index_attr = index_attrs_[i];
+      const char *attr_v = v + offset;
+      offset += index_attr.attr_length;
+
+      switch (index_attr.attr_type) {
+        case INTS: {
+          ss << std::to_string(*(int*)attr_v);
+        }break;
+        case FLOATS: {
+          ss << std::to_string(*(float*)attr_v);
+        }break;
+        case DATES: {
+          ss << std::to_string(*(int*)attr_v);
+        }break;
+        case CHARS: {
+          std::string str;
+          for (int i = 0; i < index_attr.attr_length; i++) {
+            if (attr_v[i] == 0) {
+              break;
+            }
+            str.push_back(attr_v[i]);
+          }
+          ss << str;
+        }break;
+        default:{
+          LOG_ERROR("unknown attr type. %d", index_attr.attr_type);
+          abort();
         }
-        str.push_back(v[i]);
       }
-      return str;
-    }break;
-    default:{
-      LOG_ERROR("unknown attr type. %d", attr_type_);
-      abort();
+
+      if(i != attr_num_ - 1) {
+        ss << "-";
+      }
     }
-    }
+    return ss.str();
   }
 private:
-  AttrType attr_type_;
-  int attr_length_;
+  int  attr_length_;
+  int  attr_num_;
+  IndexAttr index_attrs_[MAX_NUM];
 };
 
 class KeyPrinter
 {
 public:
-  void init(AttrType type, int length)
+  void init(int attr_num, IndexAttr *index_attrs, int length)
   {
-    attr_printer_.init(type, length);
+    attr_printer_.init(attr_num, index_attrs ,length);
   }
 
   const AttrPrinter &attr_printer() const {
@@ -178,20 +234,21 @@ struct IndexFileHeader {
   PageNum  root_page;
   int32_t  internal_max_size;
   int32_t  leaf_max_size;
-  int32_t  attr_length;
   int32_t  key_length; // attr length + sizeof(RID)
-  AttrType attr_type;
+  int32_t  attr_length;
+  int32_t  attr_num;
+  IndexAttr index_attrs[MAX_NUM];
 
   const std::string to_string()
   {
     std::stringstream ss;
 
-    ss << "attr_length:" << attr_length << ","
-       << "key_length:" << key_length << ","
-       << "attr_type:" << attr_type << ","
-       << "root_page:" << root_page << ","
-       << "internal_max_size:" << internal_max_size << ","
-       << "leaf_max_size:" << leaf_max_size << ";";
+    // ss << "attr_length:" << attr_length << ","
+    //    << "key_length:" << key_length << ","
+    //    << "attr_type:" << attr_type << ","
+    //    << "root_page:" << root_page << ","
+    //    << "internal_max_size:" << internal_max_size << ","
+    //    << "leaf_max_size:" << leaf_max_size << ";";
 
     return ss.str();
   }
@@ -389,7 +446,7 @@ public:
    * 此函数创建一个名为fileName的索引。
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
-  RC create(const char *file_name, AttrType attr_type, int attr_length,
+  RC create(const char *file_name, int attr_num, IndexAttr *index_attrs,
 	    int internal_max_size = -1, int leaf_max_size = -1);
 
   /**
@@ -426,7 +483,7 @@ public:
    * @param key_len user_key的长度
    * @param rid  返回值，记录记录所在的页面号和slot
    */
-  RC get_entry(const char *user_key, int key_len, std::list<RID> &rids);
+  RC get_entry(const char *user_key, std::list<RID> &rids);
 
   RC sync();
 
@@ -481,6 +538,7 @@ protected:
 
 private:
   char *make_key(const char *user_key, const RID &rid);
+  char *make_attr_key(const char *attr_key, const RID &rid);
   void  free_key(char *key);
 protected:
   DiskBufferPool *disk_buffer_pool_ = nullptr;

@@ -43,6 +43,11 @@ public:
     return index_meta_;
   }
 
+  const std::vector<FieldMeta> &fields() const
+  {
+    return fields_;
+  }
+
   virtual RC insert_entry(const char *record, const RID *rid) = 0;
   virtual RC delete_entry(const char *record, const RID *rid) = 0;
 
@@ -52,11 +57,11 @@ public:
   virtual RC sync() = 0;
 
 protected:
-  RC init(const IndexMeta &index_meta, const FieldMeta &field_meta, bool unique);
+  RC init(const IndexMeta &index_meta, std::vector<FieldMeta> fields, bool unique);
 
 protected:
   IndexMeta index_meta_;
-  FieldMeta field_meta_;  /// 当前实现仅考虑一个字段的索引
+  std::vector<FieldMeta> fields_;  /// 当前实现仅考虑一个字段的索引
   bool unique_;
 };
 

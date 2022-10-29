@@ -23,8 +23,8 @@ public:
   BplusTreeIndex() = default;
   virtual ~BplusTreeIndex() noexcept;
 
-  RC create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta,bool unique);
-  RC open(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta);
+  RC create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> fields, bool unique);
+  RC open(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> fields);
   RC close();
 
   RC insert_entry(const char *record, const RID *rid) override;
