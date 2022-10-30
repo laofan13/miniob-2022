@@ -99,6 +99,7 @@ RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
     std::list<RID> rids;
     RC rc = index_handler_.get_entry(record , rids);
     if(rc == SUCCESS && rids.size() != 0) {
+      LOG_WARN("UNIQUE INDEX not be duplicate value");
       return RC::SCHEMA_INDEX_UNIQUE;
     }
   }
