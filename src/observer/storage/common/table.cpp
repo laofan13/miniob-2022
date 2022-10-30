@@ -574,7 +574,7 @@ static RC insert_index_record_reader_adapter(Record *record, void *context)
   return inserter.insert_index(record);
 }
 
-RC Table::create_index(Trx *trx, const char *index_name, size_t attr_num, char* attributes[], bool unique)
+RC Table::create_index(Trx *trx, const char *index_name, int attr_num, char* attributes[], bool unique)
 {
 
   if (common::is_blank(index_name)) {
@@ -594,7 +594,7 @@ RC Table::create_index(Trx *trx, const char *index_name, size_t attr_num, char* 
   }
 
   std::vector<FieldMeta> field_metas;
-  for(size_t i = 0; i < attr_num;i++) {
+  for(int i = attr_num - 1; i >= 0; i--) {
     const char* attribute_name = attributes[i];
     if(common::is_blank(attribute_name)) {
       LOG_INFO("Invalid input arguments, table name is %s,  attribute_name is blank", name());
@@ -610,7 +610,7 @@ RC Table::create_index(Trx *trx, const char *index_name, size_t attr_num, char* 
   }
 
   IndexMeta new_index_meta;
-  RC rc = new_index_meta.init(index_name, field_metas);
+  RC rc = new_index_meta.init(index_name, field_metas,unique);
   if (rc != RC::SUCCESS) {
     LOG_INFO("Failed to init IndexMeta in table:%s, index_name:%s",
              name(), index_name);
@@ -620,7 +620,7 @@ RC Table::create_index(Trx *trx, const char *index_name, size_t attr_num, char* 
   // 创建索引相关数据
   BplusTreeIndex *index = new BplusTreeIndex();
   std::string index_file = table_index_file(base_dir_.c_str(), name(), index_name);
-  rc = index->create(index_file.c_str(), new_index_meta, field_metas, unique);
+  rc = index->create(index_file.c_str(), new_index_meta, field_metas);
   if (rc != RC::SUCCESS) {
     delete index;
     LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file.c_str(), rc, strrc(rc));

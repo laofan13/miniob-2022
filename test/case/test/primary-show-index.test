@@ -9,5 +9,4 @@ CREATE UNIQUE INDEX index_id on unique_table(id);
 INSERT INTO unique_table VALUES (3,2,1);
 INSERT INTO unique_table VALUES (1,2,1);
 
--- echo 2. select
--- sort SELECT * FROM unique_table;
+SHOW INDEX FROM unique_table;

@@ -158,7 +158,8 @@ command:
 	| drop_table
 	| show_tables
 	| desc_table
-	| create_index	
+	| create_index
+	| show_index
 	| drop_index
 	| sync
 	| begin
@@ -245,7 +246,11 @@ index_attr_list:
 	}
     ;
 
-
+show_index:
+	SHOW INDEX FROM ID SEMICOLON {
+		CONTEXT->ssql->flag=SCF_SHOW_INDEX;//"show_index";
+		show_index_init(&CONTEXT->ssql->sstr.show_index, $4);
+	};
 
 drop_index:			/*drop index 语句的语法解析树*/
     DROP INDEX ID  SEMICOLON 

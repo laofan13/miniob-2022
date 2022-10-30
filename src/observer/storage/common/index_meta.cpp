@@ -22,8 +22,9 @@ See the Mulan PSL v2 for more details. */
 
 const static Json::StaticString FIELD_NAME("name");
 const static Json::StaticString FIELDS_NAME("fields");
+const static Json::StaticString FIELD_UNIQUE("unique");
 
-RC IndexMeta::init(const char *name, const std::vector<FieldMeta> &fields)
+RC IndexMeta::init(const char *name, const std::vector<FieldMeta> &fields, bool unique)
 {
   if (common::is_blank(name)) {
     LOG_ERROR("Failed to init index, name is empty.");
@@ -34,12 +35,14 @@ RC IndexMeta::init(const char *name, const std::vector<FieldMeta> &fields)
   for(auto &field: fields) {
     fields_.push_back(field.name());
   }
+  unique_ = unique;
   return RC::SUCCESS;
 }
 
 void IndexMeta::to_json(Json::Value &json_value) const
 {
   json_value[FIELD_NAME] = name_;
+  json_value[FIELD_UNIQUE] = unique_;
 
   Json::Value fields_name;
   for (auto &field : fields_) {
@@ -52,8 +55,15 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
 {
   const Json::Value &name_value = json_value[FIELD_NAME];
   const Json::Value &fields_value = json_value[FIELDS_NAME];
+  const Json::Value &unique_value = json_value[FIELD_UNIQUE];
+
   if (!name_value.isString()) {
     LOG_ERROR("Index name is not a string. json value=%s", name_value.toStyledString().c_str());
+    return RC::GENERIC_ERROR;
+  }
+
+   if (!unique_value.isBool()) {
+    LOG_ERROR("unique is not a bool. json value=%s", unique_value.toStyledString().c_str());
     return RC::GENERIC_ERROR;
   }
 
@@ -77,7 +87,7 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
     fields.push_back(*field);
   }
 
-  return index.init(name_value.asCString(), fields);
+  return index.init(name_value.asCString(), fields,unique_value.asBool());
 }
 
 const char *IndexMeta::name() const
@@ -90,15 +100,18 @@ const std::vector<std::string> &IndexMeta::fields() const
   return fields_;
 }
 
-void IndexMeta::desc(std::ostream &os) const
+const bool IndexMeta::is_unique() const
 {
-  os << "index name=" << name_ << ", field=(";
+  return unique_;
+}
 
-  for(int i =0 ;i < fields_.size();i++) {
-    if(i != fields_.size() - 1) {
-      os << fields_[i] << ",";
-    }else{
-      os << fields_[i] << ")";
-    }
+void IndexMeta::desc(std::ostream &os, std::string table_name) const
+{
+  for(int i = 0; i < fields_.size();i++) {
+    os << table_name << " | ";
+    os << unique_ << " | ";
+    os << name_ << " | ";
+    os << i + 1 << " | ";
+    os << fields_[i]<< std::endl;
   }
 }

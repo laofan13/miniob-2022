@@ -1,0 +1,49 @@
+-- echo initialization
+CREATE TABLE unique_table(id int, col1 int, col2 int);
+INSERT INTO unique_table VALUES (1,1,1);
+
+-- echo 1. unique test
+CREATE UNIQUE INDEX index_id on unique_table(id);
+INSERT INTO unique_table VALUES (2,1,1);
+CREATE UNIQUE INDEX index_id on unique_table(id);
+INSERT INTO unique_table VALUES (3,2,1);
+INSERT INTO unique_table VALUES (1,2,1);
+
+-- echo 2. select
+-- sort SELECT * FROM unique_table;
+
+CREATE TABLE unique_table2(id1 int, id2 int,id3 int,id4 int);
+CREATE UNIQUE INDEX multi_index on unique_table2(id3,id4);
+INSERT INTO unique_table2 VALUES(2,2,1,1);
+INSERT INTO unique_table2 VALUES(1,1,1,1);
+
+1. UNIQUE TEST
+CREATE UNIQUE INDEX index_id on unique_table1(id);
+SUCCESS
+INSERT INTO unique_table1 VALUES (2,1,1);
+SUCCESS
+CREATE UNIQUE INDEX index_id on unique_table1(id);
+INSERT INTO unique_table1 VALUES (1,2,1);
+FAILURE
+
+CREATE UNIQUE INDEX index_id on unique_table2(id1,id2);
+SUCCESS
+INSERT INTO unique_table2 VALUES (2,2,1,1);
+SUCCESS
+INSERT INTO unique_table2 VALUES (1,1,1,1);
+FAILURE
+
+CREATE UNIQUE INDEX index_id on unique_table2(id);
+FAILURE
+CREATE UNIQUE INDEX index_id2 on unique_table2(id2);
+SUCCESS
+INSERT INTO unique_table2 VALUES (1,2,1,1);
+FAILURE
+INSERT INTO unique_table2 VALUES (2,3,1,1);
+SUCCESS
+
+
+
+2. SELECT
+SELECT * FROM unique_table1;
+1 | 1 | 1

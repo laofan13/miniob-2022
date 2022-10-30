@@ -167,6 +167,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     case SCF_CREATE_INDEX: {
       do_create_index(sql_event);
     } break;
+    case SCF_SHOW_INDEX: {
+      do_show_index(sql_event);
+    } break;
     case SCF_SHOW_TABLES: {
       do_show_tables(sql_event);
     } break;
@@ -718,6 +721,28 @@ RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
   sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
   return rc;
 }
+
+RC ExecuteStage::do_show_index(SQLStageEvent *sql_event) {
+  SessionEvent *session_event = sql_event->session_event();
+  Db *db = session_event->session()->get_current_db();
+  ShowIndex &show_index = sql_event->query()->sstr.show_index;
+  Table *table = db->find_table(show_index.relation_name);
+  if (nullptr == table) {
+    session_event->set_response("FAILURE\n");
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  std::stringstream ss;
+  ss << "Table | Non_unique | Key_name | Seq_in_index | Column_name" << std::endl;
+  auto table_meta = table->table_meta();
+  for(int i = 0;i < table_meta.index_num(); i++) {
+    auto index_meta = table_meta.index(i);
+    index_meta->desc(ss,table_meta.name());
+  }
+  session_event->set_response(ss.str());
+  return RC::SUCCESS;
+}
+
 
 RC ExecuteStage::do_show_tables(SQLStageEvent *sql_event)
 {

@@ -336,7 +336,7 @@ void TableMeta::desc(std::ostream &os) const
 
   for (const auto &index : indexes_) {
     os << '\t';
-    index.desc(os);
+    index.desc(os,name());
     os << std::endl;
   }
   os << ')' << std::endl;

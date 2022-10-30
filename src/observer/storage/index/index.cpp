@@ -14,10 +14,9 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/index/index.h"
 
-RC Index::init(const IndexMeta &index_meta, std::vector<FieldMeta> fields,bool unique)
+RC Index::init(const IndexMeta &index_meta, std::vector<FieldMeta> fields)
 {
   index_meta_ = index_meta;
   fields_.swap(fields);
-  unique_ = unique;
   return RC::SUCCESS;
 }

@@ -20,5 +20,6 @@
   "primary-group-by":{"necessary":false, "score":20},
 
   "primary-typecast":{"necessary":false, "score":10},
-  "primary-like":{"necessary":false, "score":10}
+  "primary-like":{"necessary":false, "score":10},
+  "primary-show-index":{"necessary":false, "score":10}
 }
