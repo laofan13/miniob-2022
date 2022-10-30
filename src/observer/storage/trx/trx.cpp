@@ -99,7 +99,7 @@ RC Trx::delete_record(Table *table, Record *record)
   start_if_not_started();
   Operation *old_oper = find_operation(table, record->rid());
   if (old_oper != nullptr) {
-    if (old_oper->type() == Operation::Type::DELETE) {
+    if (old_oper->type() == Operation::Type::INSERT) {
       delete_operation(table, record->rid());
       return RC::SUCCESS;
     } else {
