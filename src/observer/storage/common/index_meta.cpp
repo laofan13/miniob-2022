@@ -109,7 +109,7 @@ void IndexMeta::desc(std::ostream &os, std::string table_name) const
 {
   for(int i = 0; i < fields_.size();i++) {
     os << table_name << " | ";
-    os << unique_ << " | ";
+    os << !unique_ << " | ";
     os << name_ << " | ";
     os << i + 1 << " | ";
     os << fields_[i]<< std::endl;
