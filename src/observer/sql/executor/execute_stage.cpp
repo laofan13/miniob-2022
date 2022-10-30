@@ -801,7 +801,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
       // check the fields number
     const Value *values = records[i].values;
     const int value_num = records[i].value_num;
-    rc = table->insert_record(nullptr, value_num, values); // TODO trx
+    rc = table->insert_record(trx, value_num, values); // TODO trx
     if(rc != RC::SUCCESS) {
       LOG_ERROR("Failed to insert a record. rc=%d:%s", rc, strrc(rc));
       break;
