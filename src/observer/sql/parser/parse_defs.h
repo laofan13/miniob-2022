@@ -121,9 +121,10 @@ typedef struct {
 
 typedef struct {
   char *attribute_name;           // Attribute to update
-  Value value;                    // update value
+  int is_sub_select;
+  Value value; 
+  Selects select;
 }UpdateRecord;
-
 
 // struct of update
 typedef struct {
@@ -262,6 +263,7 @@ void deletes_destroy(Deletes *deletes);
 
 void updates_init(Updates *updates, const char *relation_name, Condition conditions[], size_t condition_num);
 void updates_value_append(Updates *updates, const char *attribute_name, Value *value);
+void updates_select_append(Updates *updates, const char *attribute_name, Selects *selects);
 void updates_destroy(Updates *updates);
 
 void create_table_append_attribute(CreateTable *create_table, AttrInfo *attr_info);

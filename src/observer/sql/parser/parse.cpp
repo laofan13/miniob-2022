@@ -160,28 +160,33 @@ void selects_append_join_conditions(Selects *selects, Condition conditions[], si
 
 void selects_destroy(Selects *selects)
 {
+  // destory RelAttr
   for (size_t i = 0; i < selects->attr_num; i++) {
     relation_attr_destroy(&selects->attributes[i]);
   }
   selects->attr_num = 0;
 
+  // destory AggrAttr
   for (size_t i = 0; i < selects->aggr_num; i++) {
     relation_attr_destroy(&selects->aggr_attrs[i].rel_attr);
   }
   selects->aggr_num = 0;
 
+  // destory relations
   for (size_t i = 0; i < selects->relation_num; i++) {
     free(selects->relations[i]);
     selects->relations[i] = NULL;
   }
   selects->relation_num = 0;
 
+  // destory conditions
   for (size_t i = 0; i < selects->condition_num; i++) {
     condition_destroy(&selects->conditions[i]);
   }
   selects->condition_num = 0;
 
-   for (size_t i = 0; i < selects->join_num; i++) {
+  // destory join_conditions
+  for (size_t i = 0; i < selects->join_num; i++) {
     condition_destroy(&selects->join_conditions[i]);
   }
   selects->join_num = 0;
@@ -257,9 +262,53 @@ void updates_init(Updates *updates, const char *relation_name, Condition conditi
 }
 
 void updates_value_append(Updates *updates, const char *attribute_name, Value *value){
-  UpdateRecord &update_record = updates->update_records[ updates->update_num++];
+  UpdateRecord &update_record = updates->update_records[updates->update_num++];
   update_record.attribute_name = strdup(attribute_name);
   update_record.value = *value;
+  update_record.is_sub_select = 0;
+}
+
+void updates_select_append(Updates *updates, const char *attribute_name, Selects *selects){
+  UpdateRecord &update_record = updates->update_records[updates->update_num++];
+  update_record.attribute_name = strdup(attribute_name);
+
+  update_record.is_sub_select = 1;
+  Selects &sub_selects = update_record.select;
+
+  // copy RelAttr
+  for(size_t i = 0;i < selects->attr_num; i++) {
+    sub_selects.attributes[i] = selects->attributes[i];
+  }
+  sub_selects.attr_num = selects->attr_num;
+  selects->attr_num = 0;
+
+  // copy AggrAttr
+  for(size_t i = 0;i < selects->aggr_num; i++) {
+    sub_selects.aggr_attrs[i] = selects->aggr_attrs[i];
+  }
+  sub_selects.aggr_num = selects->aggr_num;
+  selects->aggr_num = 0;
+
+  // copy relations
+  for(size_t i = 0;i < selects->relation_num; i++) {
+    sub_selects.relations[i] = selects->relations[i];
+  }
+  sub_selects.relation_num = selects->relation_num;
+  selects->relation_num = 0;
+
+  // copy join_conditions
+  for(size_t i = 0;i < selects->join_num; i++) {
+    sub_selects.join_conditions[i] = selects->join_conditions[i];
+  }
+  sub_selects.join_num = selects->join_num;
+  selects->join_num = 0;
+
+  // copy conditions
+  for(size_t i = 0;i < selects->condition_num; i++) {
+    sub_selects.conditions[i] = selects->conditions[i];
+  }
+  sub_selects.condition_num = selects->condition_num;
+  selects->condition_num = 0;
 }
 
 void updates_destroy(Updates *updates)
@@ -267,11 +316,16 @@ void updates_destroy(Updates *updates)
   free(updates->relation_name);
   updates->relation_name = nullptr;
 
-  for(size_t i = 0;i < updates->update_num; ++i) {
+  for(size_t i = 0;i < updates->update_num; i++) {
     UpdateRecord &update_record = updates->update_records[i];
     free(update_record.attribute_name);
     update_record.attribute_name = nullptr;
-    value_destroy(&update_record.value);
+
+    if(update_record.is_sub_select) {
+      selects_destroy(&update_record.select);
+    }else{
+      value_destroy(&update_record.value);
+    }
   }
   updates->update_num = 0;
 
