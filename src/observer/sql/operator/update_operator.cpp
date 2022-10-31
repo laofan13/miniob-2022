@@ -33,8 +33,8 @@ RC UpdateOperator::open()
   }
 
   Table *table = update_stmt_->table();
-  const char *attribute_name = update_stmt_->field().field_name();
-  const Value *value = update_stmt_->value();
+  auto update_fields = update_stmt_->update_fields();
+
   Operator *child = children_[0];
   while (RC::SUCCESS == (rc = child->next())) {
     Tuple *tuple = child->current_tuple();
@@ -43,15 +43,43 @@ RC UpdateOperator::open()
         return rc;
     }
     RowTuple *row_tuple = static_cast<RowTuple *>(tuple);
-    Record &record = row_tuple->record();
+    Record record = row_tuple->record();
+    Record new_record = update_record(record);
     
-    rc = table->update_record(nullptr, attribute_name, value, &record);
+    RC rc = table->update_record(nullptr, update_fields, &record, &new_record);
     if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to delete record: %s", strrc(rc));
-        return rc;
+      delete new_record.data();
+      LOG_WARN("failed to delete record: %s", strrc(rc));
+      return rc;
     }
+    delete new_record.data();
   }
   return RC::SUCCESS;
+}
+
+Record UpdateOperator::update_record(Record &record){
+  // 复制所有字段的值
+  Record new_recold(record);
+  int record_size = update_stmt_->table()->table_meta().record_size();
+  char *record_data = new char[record_size];
+
+  memcpy(record_data, record.data(), record_size);
+
+  // update correspond field
+  for(auto &field: update_stmt_->update_fields()) {
+    auto field_meta = field.meta();
+    auto value = field.value();
+    size_t copy_len = field_meta->len();
+    if (field_meta->type() == CHARS) {
+      const size_t data_len = strlen((const char *)value->data);
+      if (copy_len > data_len) {
+        copy_len = data_len + 1;
+      }
+    }
+    memcpy(record_data + field_meta->offset(), value->data, copy_len);
+  }
+  new_recold.set_data(record_data);
+  return new_recold;
 }
 
 RC UpdateOperator::next()

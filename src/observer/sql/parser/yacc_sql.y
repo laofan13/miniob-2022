@@ -371,15 +371,47 @@ delete:		/*  delete 语句的语法解析树*/
     }
     ;
 update:			/*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where SEMICOLON
+    UPDATE ID SET update_value update_value_list where SEMICOLON
 		{
 			CONTEXT->ssql->flag = SCF_UPDATE;//"update";
-			Value *value = &CONTEXT->values[0];
-			updates_init(&CONTEXT->ssql->sstr.update, $2, $4, value, 
-					CONTEXT->conditions, CONTEXT->condition_length);
+			
+			updates_init(&CONTEXT->ssql->sstr.update, $2,CONTEXT->conditions, CONTEXT->condition_length);
 			CONTEXT->condition_length = 0;
+			CONTEXT->value_length = 0;
 		}
     ;
+
+update_value_list:
+	 /* empty */
+    | COMMA update_value update_value_list {
+		
+	};
+
+update_value:
+	/* empty */
+    |ID EQ NUMBER{
+		Value value;
+  		value_init_integer(&value, $3);
+		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
+	}
+    |ID EQ FLOAT{
+		Value value;
+  		value_init_float(&value, $3);
+		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
+	}
+	|ID EQ DATE_STR{
+		Value value;
+  		value_init_date(&value, $3);
+		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
+	}
+    |ID EQ SSS {
+		$3 = substr($3,1,strlen($3)-2);
+		Value value;
+  		value_init_string(&value, $3);
+		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
+	}
+    ;
+
 select:				/*  select 语句的语法解析树*/
     SELECT select_attr FROM ID relation where SEMICOLON
 		{
@@ -525,10 +557,10 @@ join_list:
 	;
 
 where:
-    /* empty */ 
+    /* empty */
     | WHERE condition condition_list {	
-				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
-			}
+			// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+		}
     ;
 condition_list:
     /* empty */

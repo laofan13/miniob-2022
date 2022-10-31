@@ -93,3 +93,21 @@ private:
   const char *field_name_ = nullptr;
   AggrType aggr_type_;
 };
+
+class UpdateField: public Field
+{
+public:
+  UpdateField() = default;
+  UpdateField(const Table *table, const FieldMeta *field, const Value* value) :
+  Field(table,field), value_(value)
+  {}
+
+  const Value *value() const { return value_; }
+
+  void set_value(const Value* value)
+  {
+    this->value_ = value;
+  }
+private:
+  const Value *value_ = nullptr;
+};

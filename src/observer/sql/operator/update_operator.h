@@ -37,5 +37,7 @@ public:
   //int tuple_cell_num() const override
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override
 private:
+  Record update_record(Record &record);
+private:
   UpdateStmt *update_stmt_ = nullptr;
 };

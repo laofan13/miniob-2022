@@ -29,6 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/index/bplus_tree_index.h"
 #include "storage/trx/trx.h"
 #include "storage/clog/clog.h"
+#include "storage/common/field.h"
 
 Table::~Table()
 {
@@ -686,7 +687,7 @@ RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value
   return RC::GENERIC_ERROR;
 }
 
-RC Table::update_record(Trx *trx, const char *field_name, Record *old_record, Record *new_record)
+RC Table::update_record(Trx *trx,  std::vector<UpdateField> &update_fields, Record *old_record, Record *new_record)
 {
   RC rc = RC::SUCCESS;
 
@@ -694,24 +695,12 @@ RC Table::update_record(Trx *trx, const char *field_name, Record *old_record, Re
     trx->init_trx_info(this, *new_record);
   }
 
-  rc = update_entry_of_indexes(field_name,old_record->data() ,new_record->data(), old_record->rid());
+  rc = delete_entry_of_indexes(old_record->data(), old_record->rid(), false);
   if (rc != RC::SUCCESS) {
-    RC rc2 = update_entry_of_indexes(field_name,new_record->data() ,old_record->data(), new_record->rid());
-    if (rc2 != RC::SUCCESS) {
-      LOG_ERROR("Failed to rollback index data when update index entries failed. table name=%s, rc=%d:%s",
-          name(),
-          rc2,
-          strrc(rc2));
-    }
-    rc2 = record_handler_->update_record(old_record);
-    if (rc2 != RC::SUCCESS) {
-      LOG_PANIC("Failed to rollback record data when update index entries failed. table name=%s, rc=%d:%s",
-          name(),
-          rc2,
-          strrc(rc2));
-    }
+    LOG_ERROR("Failed to delete indexes of record (rid=%d.%d). rc=%d:%s",
+                old_record->rid().page_num, old_record->rid().slot_num, rc, strrc(rc));
     return rc;
-  }
+  } 
 
   rc = record_handler_->update_record(new_record);
   if (rc != RC::SUCCESS) {
@@ -734,52 +723,24 @@ RC Table::update_record(Trx *trx, const char *field_name, Record *old_record, Re
       return rc;
     }
   }
-  return rc;
-}
 
-RC Table::update_record(Trx *trx, const char *field_name, const Value *value,Record *record)
-{
-  if (nullptr == field_name || nullptr == value) {
-    LOG_ERROR("Invalid argument. attribute name: %s, values=%p", field_name, value);
-    return RC::INVALID_ARGUMENT;
-  }
-  // check fields
-  const FieldMeta *field = table_meta_.field(field_name);
-  if(nullptr == field) {
-    LOG_WARN("no such field in table: table %s, field %s", table_meta_.name(), field_name);
-    return RC::SCHEMA_FIELD_NOT_EXIST;
-  }
-  // check fields type
-  if (field->type() != value->type) {
-    LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
-        table_meta_.name(),
-        field->name(),
-        field->type(),
-        value->type);
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  }
-
-  // 复制所有字段的值
-  Record new_recold(*record);
-  int record_size = table_meta_.record_size();
-  char *record_data = new char[record_size];
-
-  memcpy(record_data, record->data(), record_size);
-
-  // update correspond field
-  size_t copy_len = field->len();
-  if (field->type() == CHARS) {
-    const size_t data_len = strlen((const char *)value->data);
-    if (copy_len > data_len) {
-      copy_len = data_len + 1;
+  rc = insert_entry_of_indexes(new_record->data(), new_record->rid());
+  if (rc != RC::SUCCESS) {
+    RC rc2 = delete_entry_of_indexes(new_record->data(), new_record->rid(), true);
+    if (rc2 != RC::SUCCESS) {
+      LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
+          name(),
+          rc2,
+          strrc(rc2));
+    }
+    rc2 = record_handler_->delete_record(&new_record->rid());
+    if (rc2 != RC::SUCCESS) {
+      LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
+          name(),
+          rc2,
+          strrc(rc2));
     }
   }
-  memcpy(record_data + field->offset(), value->data, copy_len);
-
-  new_recold.set_data(record_data);
-  // record.valid = true;
-  RC rc = update_record(trx,field_name, record, &new_recold);
-  delete[] record_data;
   return rc;
 }
 
