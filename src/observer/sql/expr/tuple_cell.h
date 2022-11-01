@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <iostream>
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
+#include "storage/default/disk_buffer_pool.h"
 
 class TupleCell
 {
@@ -33,12 +34,19 @@ public:
     : attr_type_(attr_type), length_(length),data_(data)
   {}
 
+  ~TupleCell() {
+    if(text_data_ != nullptr) {
+      delete text_data_;
+    }
+  }
+
   void set_type(AttrType type) { this->attr_type_ = type; }
   void set_length(int length) { this->length_ = length; }
   void set_data(char *data) { this->data_ = data; }
   void set_data(const char *data) { this->set_data(const_cast<char *>(data)); }
 
   void to_string(std::ostream &os) const;
+  void to_text(std::ostream &os) const;
 
   int compare(const TupleCell &other) const;
   int like_match(const TupleCell &other) const;
@@ -55,8 +63,14 @@ public:
     return attr_type_;
   }
 
+  void new_text() {
+    text_data_ = new char[TEXTPAGESIZE];
+  }
+  char * text_data() {return text_data_;}
+
 private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = -1;
   char *data_ = nullptr; // real data. no need to move to field_meta.offset
+  char *text_data_ = nullptr;
 };

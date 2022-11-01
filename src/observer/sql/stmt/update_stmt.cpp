@@ -29,7 +29,7 @@ UpdateStmt::~UpdateStmt()
   }
 }
 
-RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
+RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
 {
   // TODO
   const char *table_name = update.relation_name;
@@ -47,7 +47,7 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
   // check update fields
   std::vector<UpdateField> update_fields;
   for(size_t i = 0;i < update.update_num; i++) {
-    const UpdateRecord &update_record = update.update_records[i];
+    UpdateRecord &update_record = update.update_records[i];
     const char *field_name = update_record.attribute_name;
 
     const FieldMeta *field_meta = table->table_meta().field(field_name);
@@ -58,7 +58,12 @@ RC UpdateStmt::create(Db *db, const Updates &update, Stmt *&stmt)
 
     // check fields type
     const AttrType field_type = field_meta->type();
-    const AttrType value_type = update_record.value.type;
+    AttrType value_type = update_record.value.type;
+
+    if(field_type == TEXTS && value_type == CHARS) {
+      update_record.value.type = TEXTS;
+      value_type = TEXTS;
+    }
     if (field_type != value_type) { // TODO try to convert the value type to field type
       LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                 table_name, field_meta->name(), field_type, value_type);

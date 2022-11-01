@@ -129,6 +129,14 @@ public:
    */
   RC get_record(const RID *rid, Record *rec);
 
+   /**
+   * 为text而设计的接口，用来将数据插入到该页中，并且获得对应的页号
+   */
+  RC insert_text_data(const char *data, PageNum *page_num);
+  RC read_text_data(char *data, PageNum page_num);
+  RC delete_text_data(const PageNum page_num, int record_size);
+  RC update_text_data(const char *data, const PageNum page_num);
+
   template <class RecordUpdater>  // 改成普通模式, 不使用模板
   RC update_record_in_place(const RID *rid, RecordUpdater updater)
   {

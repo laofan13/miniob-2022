@@ -465,6 +465,81 @@ RC RecordFileHandler::get_record(const RID *rid, Record *rec)
   return page_handler.get_record(rid, rec);
 }
 
+RC RecordFileHandler::insert_text_data(const char *data, PageNum *page_num) {
+  RC ret = RC::SUCCESS;
+  // 分配一个新的空页面
+  Frame *frame = nullptr;
+  if ((ret = disk_buffer_pool_->allocate_page(&frame)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to allocate page while inserting record. ret:%d", ret);
+    return ret;
+  }
+  *page_num = frame->page_num();
+
+  memset(frame->data(), 0, TEXTPATCHSIZE);
+  memcpy(frame->data() + TEXTPATCHSIZE, data, TEXTPAGESIZE - TEXTPATCHSIZE);
+  frame->mark_dirty();
+  if (ret != RC::SUCCESS) {
+    LOG_ERROR("Failed to mark page dirty. ret=%s", strrc(ret));
+  }
+  ret = disk_buffer_pool_->unpin_page(frame);
+  return ret;
+}
+
+RC RecordFileHandler::read_text_data(char *data, PageNum page_num){
+  RC ret = RC::SUCCESS;
+  Frame *frame = nullptr;
+  if ((ret = disk_buffer_pool_->get_this_page(page_num, &frame)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to get page handle from disk buffer pool. ret=%d:%s", ret, strrc(ret));
+    return ret;
+  }
+  char *page_data = frame->data();
+
+  memcpy(data, page_data + TEXTPATCHSIZE, TEXTPAGESIZE - TEXTPATCHSIZE);
+  int len =strlen(data);
+  ret = disk_buffer_pool_->unpin_page(frame);
+  return ret;
+}
+
+RC RecordFileHandler::delete_text_data(const PageNum page_num, int record_size) {
+  RC ret = RC::SUCCESS;
+  Frame *frame = nullptr;
+  if ((ret = disk_buffer_pool_->get_this_page(page_num, &frame)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to get page handle from disk buffer pool. ret=%d:%s", ret, strrc(ret));
+    return ret;
+  }
+
+  RecordPageHandler record_page_handler;
+  ret = record_page_handler.init_empty_page(*disk_buffer_pool_, page_num, record_size);
+  if (ret != RC::SUCCESS) {
+    LOG_ERROR("Failed to init empty page. ret:%d", ret);
+    if (RC::SUCCESS != disk_buffer_pool_->unpin_page(frame)) {
+      LOG_ERROR("Failed to unpin page. ");
+    }
+    return ret;
+  }
+
+  disk_buffer_pool_->unpin_page(frame);
+  free_pages_.insert(page_num);
+}
+
+RC RecordFileHandler::update_text_data(const char *data, const PageNum page_num) {
+  RC ret = RC::SUCCESS;
+  Frame *frame = nullptr;
+  if ((ret = disk_buffer_pool_->get_this_page(page_num, &frame)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to get page handle from disk buffer pool. ret=%d:%s", ret, strrc(ret));
+    return ret;
+  }
+  char *page_data = frame->data();
+  
+  memcpy(page_data + TEXTPATCHSIZE, data, TEXTPAGESIZE - TEXTPATCHSIZE);
+  frame->mark_dirty();
+  if (ret != RC::SUCCESS) {
+    LOG_ERROR("Failed to mark page dirty. ret=%s", strrc(ret));
+  }
+  ret = disk_buffer_pool_->unpin_page(frame);
+  return ret;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 RC RecordFileScanner::open_scan(DiskBufferPool &buffer_pool, ConditionFilter *condition_filter)

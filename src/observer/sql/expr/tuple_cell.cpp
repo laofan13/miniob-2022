@@ -45,11 +45,33 @@ void TupleCell::to_string(std::ostream &os) const
       os << data_[i];
     }
   } break;
+  case TEXTS: {
+    to_text(os);
+  } break;
   default: {
     LOG_WARN("unsupported attr type: %d", attr_type_);
   } break;
   }
 }
+
+void TupleCell::to_text(std::ostream &os) const {
+  for (int i = PAGENUMSIZE; i < length_; i++) {
+    if (data_[i] == '\0') {
+      break;
+    }
+  }
+  data_[length_] = '\0';
+  os << data_ + PAGENUMSIZE;
+
+  // for (int i = 0; i < TEXTPAGESIZE; i++) {
+  //   if (text_data_[i] == '\0') {
+  //     break;
+  //   }
+  // }
+  text_data_[TEXTPAGESIZE-TEXTPATCHSIZE] = '\0';
+  os << text_data_;
+}
+
 
 int TupleCell::compare(const TupleCell &other) const
 {

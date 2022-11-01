@@ -26,7 +26,7 @@ InsertStmt::InsertStmt(Table *table, const InsertRecord *records, int record_amo
   : table_ (table), records_(records), record_amount_(record_amount)
 {}
 
-RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
+RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
 {
   const char *table_name = inserts.relation_name;
   if (nullptr == db || nullptr == table_name || inserts.record_num <= 0) {
@@ -44,7 +44,7 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
 
   for(int i = 0; i < inserts.record_num; i++) {
     // check the fields number
-    const Value *values = inserts.records[i].values;
+    Value *values = inserts.records[i].values;
     const int value_num = inserts.records[i].value_num;
     const TableMeta &table_meta = table->table_meta();
     const int field_num = table_meta.field_num() - table_meta.sys_field_num();
@@ -101,6 +101,8 @@ RC InsertStmt::create(Db *db, const Inserts &inserts, Stmt *&stmt)
           }else{
             str[4] = '\0';
           }
+        }else if(field_type == TEXTS && value_type == CHARS){
+          values[i].type = TEXTS;
         }else{
           LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                 table_name, field_meta->name(), field_type, value_type);

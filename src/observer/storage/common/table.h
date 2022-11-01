@@ -81,6 +81,9 @@ public:
     return record_handler_;
   }
 
+  RC read_text_record(char *value, char *data) const;
+  RC update_text_record(char *value, char *data) const;
+
 public:
   const char *name() const;
 
@@ -117,6 +120,8 @@ private:
 private:
   RC init_record_handler(const char *base_dir);
   RC make_record(int value_num, const Value *values, char *&record_out);
+  RC insert_text_record(const FieldMeta *field, char *record, const Value &value);
+  RC delete_text_record(Record *record) const; 
 
 public:
   Index *find_index(const char *index_name) const;

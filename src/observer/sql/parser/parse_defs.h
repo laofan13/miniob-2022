@@ -24,6 +24,11 @@ See the Mulan PSL v2 for more details. */
 #define MAX_ERROR_MESSAGE 20
 #define MAX_DATA 50
 
+#define PAGENUMSIZE 4
+#define TEXTPATCHSIZE 28
+#define TEXTSIZE (PAGENUMSIZE+TEXTPATCHSIZE)
+#define TEXTPAGESIZE 4096
+
 //属性结构体
 typedef struct {
   char *relation_name;   // relation name (may be NULL) 表名
@@ -49,7 +54,8 @@ typedef enum
   CHARS,
   INTS,
   FLOATS,
-  DATES
+  DATES,
+  TEXTS
 } AttrType;
 
 //属性值

@@ -118,7 +118,13 @@ void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t
 {
   attr_info->name = strdup(name);
   attr_info->type = type;
-  attr_info->length = length;
+  if(type == TEXTS) {
+    attr_info->length = TEXTSIZE;
+  }else{
+    attr_info->length = length;
+  }
+
+  
 }
 void attr_info_destroy(AttrInfo *attr_info)
 {

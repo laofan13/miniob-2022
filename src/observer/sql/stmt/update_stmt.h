@@ -30,7 +30,7 @@ public:
 
   StmtType type() const override { return StmtType::UPDATE;}
 public:
-  static RC create(Db *db, const Updates &update_sql, Stmt *&stmt);
+  static RC create(Db *db, Updates &update_sql, Stmt *&stmt);
 
 public:
   Table *table() const {return table_;}

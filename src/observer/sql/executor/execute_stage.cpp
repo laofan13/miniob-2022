@@ -589,7 +589,7 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
   return rc;
 }
 
-RC ExecuteStage::do_select(SQLStageEvent *sql_event)
+RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
 {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
@@ -879,8 +879,10 @@ RC ExecuteStage::do_delete(SQLStageEvent *sql_event)
 
   DeleteStmt *delete_stmt = (DeleteStmt *)stmt;
   TableScanOperator scan_oper(delete_stmt->table());
+
   PredicateOperator pred_oper(delete_stmt->filter_stmt());
   pred_oper.add_child(&scan_oper);
+  
   DeleteOperator delete_oper(delete_stmt, trx);
   delete_oper.add_child(&pred_oper);
 

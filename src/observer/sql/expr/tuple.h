@@ -113,9 +113,19 @@ public:
     const TupleCellSpec *spec = speces_[index].get();;
     FieldExpr *field_expr = (FieldExpr *)spec->expression();
     const FieldMeta *field_meta = field_expr->field().meta();
+
+    char *data = this->record_->data();
     cell.set_type(field_meta->type());
-    cell.set_data(this->record_->data() + field_meta->offset());
+    cell.set_data(data+ field_meta->offset());
     cell.set_length(field_meta->len());
+
+    if(field_meta->type() == TEXTS) {
+      cell.new_text();
+      RC rc = table_->read_text_record(data + field_meta->offset(), cell.text_data());
+      if(rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
     return RC::SUCCESS;
   }
 

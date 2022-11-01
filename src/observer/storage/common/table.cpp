@@ -392,11 +392,65 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
         copy_len = data_len + 1;
       }
     }
-    memcpy(record + field->offset(), value.data, copy_len);
+    if(field->type() == TEXTS) {
+      RC rc = insert_text_record(field, record,value);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
+        return rc;
+      }
+    }else{
+      memcpy(record + field->offset(), value.data, copy_len);
+    }
   }
 
   record_out = record;
   return RC::SUCCESS;
+}
+
+RC Table::insert_text_record(const FieldMeta *field, char *record, const Value &value) {
+  if(field->type() != TEXTS) {
+    return RC::GENERIC_ERROR;
+  }
+  PageNum pagenum;
+  RC rc = record_handler_->insert_text_data((const char *)value.data + TEXTPATCHSIZE, &pagenum);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
+    return rc;
+  }
+  memcpy(record + field->offset(), (char *)(&pagenum), PAGENUMSIZE);
+  memcpy(record + field->offset() + PAGENUMSIZE, (char *)value.data, TEXTPATCHSIZE);
+  return rc;
+}
+
+RC Table::read_text_record(char *value, char *data) const{
+  PageNum pagenum = *(PageNum *)value;
+  RC rc = record_handler_->read_text_data(data, pagenum);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
+    return rc;
+  }
+  return rc;
+}
+
+RC Table::update_text_record(char *value, char *data) const {
+  PageNum pagenum = *(PageNum *)value;
+  RC rc = record_handler_->update_text_data(data, pagenum);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
+    return rc;
+  }
+  return rc;
+}
+
+RC Table::delete_text_record(Record *record) const {
+  int record_size = table_meta_.record_size();
+  for(int i = 0;i < table_meta_.field_num();i++) {
+    auto field = table_meta_.field(i);
+    if(field->type() == TEXTS) {
+      PageNum pagenum = *(PageNum *)(record->data() + field->offset());
+      record_handler_->delete_text_data(pagenum, record_size);
+    }
+  }
 }
 
 RC Table::init_record_handler(const char *base_dir)

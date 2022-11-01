@@ -59,8 +59,9 @@ RC UpdateOperator::open()
 
 Record UpdateOperator::update_record(Record &record){
   // 复制所有字段的值
+  auto table = update_stmt_->table();
   Record new_recold(record);
-  int record_size = update_stmt_->table()->table_meta().record_size();
+  int record_size = table->table_meta().record_size();
   char *record_data = new char[record_size];
 
   memcpy(record_data, record.data(), record_size);
@@ -76,7 +77,12 @@ Record UpdateOperator::update_record(Record &record){
         copy_len = data_len + 1;
       }
     }
-    memcpy(record_data + field_meta->offset(), value->data, copy_len);
+    if(field_meta->type() == TEXTS) {
+      RC rc = table->update_text_record(record_data + field_meta->offset(),(char *)value->data + TEXTPATCHSIZE);
+      memcpy(record_data + field_meta->offset() + PAGENUMSIZE, value->data, TEXTPATCHSIZE);
+    }else{
+      memcpy(record_data + field_meta->offset(), value->data, copy_len);
+    }
   }
   new_recold.set_data(record_data);
   return new_recold;
