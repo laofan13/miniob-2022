@@ -78,8 +78,9 @@ Record UpdateOperator::update_record(Record &record){
       }
     }
     if(field_meta->type() == TEXTS) {
-      RC rc = table->update_text_record(record_data + field_meta->offset(),(char *)value->data + TEXTPATCHSIZE);
-      memcpy(record_data + field_meta->offset() + PAGENUMSIZE, value->data, TEXTPATCHSIZE);
+      char *text_data = (char *)value->data;
+      RC rc = table->update_text_record(record_data + field_meta->offset(), text_data + TEXTPATCHSIZE);
+      memcpy(record_data + field_meta->offset() + PAGENUMSIZE, text_data, TEXTPATCHSIZE);
     }else{
       memcpy(record_data + field_meta->offset(), value->data, copy_len);
     }

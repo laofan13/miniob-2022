@@ -55,8 +55,10 @@ void TupleCell::to_string(std::ostream &os) const
 }
 
 void TupleCell::to_text(std::ostream &os) const {
+  bool is_less = false;
   for (int i = PAGENUMSIZE; i < length_; i++) {
     if (data_[i] == '\0') {
+      is_less = true;
       break;
     }
   }
@@ -68,8 +70,10 @@ void TupleCell::to_text(std::ostream &os) const {
   //     break;
   //   }
   // }
-  text_data_[TEXTPAGESIZE-TEXTPATCHSIZE] = '\0';
-  os << text_data_;
+  if(!is_less) {
+    text_data_[TEXTPAGESIZE-TEXTPATCHSIZE] = '\0';
+    os << text_data_;
+  }
 }
 
 
