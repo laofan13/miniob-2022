@@ -163,6 +163,43 @@ void selects_append_join_conditions(Selects *selects, Condition conditions[], si
   }
   selects->join_num = condition_num;
 }
+void copy_selects(Selects *selects, Selects *sub_selects) {
+   // copy RelAttr
+  for(size_t i = 0;i < selects->attr_num; i++) {
+    sub_selects->attributes[i] = selects->attributes[i];
+  }
+  sub_selects->attr_num = selects->attr_num;
+  selects->attr_num = 0;
+
+  // copy AggrAttr
+  for(size_t i = 0;i < selects->aggr_num; i++) {
+    sub_selects->aggr_attrs[i] = selects->aggr_attrs[i];
+  }
+  sub_selects->aggr_num = selects->aggr_num;
+  selects->aggr_num = 0;
+
+  // copy relations
+  for(size_t i = 0;i < selects->relation_num; i++) {
+    sub_selects->relations[i] = selects->relations[i];
+  }
+  sub_selects->relation_num = selects->relation_num;
+  selects->relation_num = 0;
+
+  // copy join_conditions
+  for(size_t i = 0;i < selects->join_num; i++) {
+    sub_selects->join_conditions[i] = selects->join_conditions[i];
+  }
+  sub_selects->join_num = selects->join_num;
+  selects->join_num = 0;
+
+  // copy conditions
+  for(size_t i = 0;i < selects->condition_num; i++) {
+    sub_selects->conditions[i] = selects->conditions[i];
+  }
+  sub_selects->condition_num = selects->condition_num;
+  selects->condition_num = 0;
+}
+
 
 void selects_destroy(Selects *selects)
 {

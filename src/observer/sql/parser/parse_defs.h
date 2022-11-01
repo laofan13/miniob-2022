@@ -257,6 +257,7 @@ void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_join_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void copy_selects(Selects *selects,Selects *sub_selects);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num);

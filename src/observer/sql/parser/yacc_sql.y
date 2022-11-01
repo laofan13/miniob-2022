@@ -12,6 +12,7 @@
 
 typedef struct ParserContext {
   Query * ssql;
+  Selects selection;
   size_t select_length;
   size_t condition_length;
   size_t from_length;
@@ -419,13 +420,15 @@ update_value:
 select:				/*  select 语句的语法解析树*/
     SELECT select_attr FROM ID relation where SEMICOLON
 		{
-			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
-			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
+			// CONTEXT->selection.relations[CONTEXT->from_length++]=$4;
+			selects_append_relation(&CONTEXT->selection, $4);
 
-			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+			selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
 
 			CONTEXT->ssql->flag=SCF_SELECT;//"select";
-			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
+			// CONTEXT->selection.attr_num = CONTEXT->select_length;
+
+			copy_selects(&CONTEXT->selection,&CONTEXT->ssql->sstr.selection);
 
 			//临时变量清零
 			CONTEXT->condition_length=0;
@@ -435,13 +438,14 @@ select:				/*  select 语句的语法解析树*/
 	}
 	|SELECT aggr_attr FROM ID rel_list where SEMICOLON
 		{
-			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
-			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
+			// CONTEXT->selection.relations[CONTEXT->from_length++]=$4;
+			selects_append_relation(&CONTEXT->selection, $4);
 
-			selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+			selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
 
 			CONTEXT->ssql->flag=SCF_SELECT;//"select";
-			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
+			// CONTEXT->selection.attr_num = CONTEXT->select_length;
+			copy_selects(&CONTEXT->selection,&CONTEXT->ssql->sstr.selection);
 
 			//临时变量清零
 			CONTEXT->condition_length=0;
@@ -455,17 +459,17 @@ select_attr:
     STAR attr_list{  
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->selection, &attr);
 		}
     | ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $1);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->selection, &attr);
 		}
   	| ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $1, $3);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+			selects_append_attribute(&CONTEXT->selection, &attr);
 		}
     ;
 attr_list:
@@ -473,16 +477,16 @@ attr_list:
     | COMMA ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-     	  // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].relation_name = NULL;
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].attribute_name=$2;
+			selects_append_attribute(&CONTEXT->selection, &attr);
+     	  // CONTEXT->selection.attributes[CONTEXT->select_length].relation_name = NULL;
+        // CONTEXT->selection.attributes[CONTEXT->select_length++].attribute_name=$2;
       }
     | COMMA ID DOT ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, $2, $4);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].attribute_name=$4;
-        // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
+			selects_append_attribute(&CONTEXT->selection, &attr);
+        // CONTEXT->selection.attributes[CONTEXT->select_length].attribute_name=$4;
+        // CONTEXT->selection.attributes[CONTEXT->select_length++].relation_name=$2;
   	  }
   	;
 
@@ -503,25 +507,25 @@ aggr_value:
 		AggrAttr aggr;
 		aggr.aggr_type = CONTEXT->aggrOp;
 		relation_attr_init(&aggr.rel_attr, NULL, "*");
-		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+		selects_append_aggregation(&CONTEXT->selection, &aggr);
 	}
 	|aggrOp LBRACE ID RBRACE {
 		AggrAttr aggr;
 		aggr.aggr_type = CONTEXT->aggrOp;
 		relation_attr_init(&aggr.rel_attr, NULL, $3);
-		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+		selects_append_aggregation(&CONTEXT->selection, &aggr);
 	}
 	|aggrOp LBRACE ID DOT ID RBRACE {
 		AggrAttr aggr;
 		aggr.aggr_type = CONTEXT->aggrOp;
 		relation_attr_init(&aggr.rel_attr, $3, $5);
-		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+		selects_append_aggregation(&CONTEXT->selection, &aggr);
 	}
 	|aggrOp LBRACE NUMBER RBRACE {
 		AggrAttr aggr;
 		aggr.aggr_type = CONTEXT->aggrOp;
 		relation_attr_init(&aggr.rel_attr, NULL, "*");
-		selects_append_aggregation(&CONTEXT->ssql->sstr.selection, &aggr);
+		selects_append_aggregation(&CONTEXT->selection, &aggr);
 	}
 
 aggrOp:
@@ -535,25 +539,25 @@ aggrOp:
 relation:
 	/* empty */
 	|COMMA ID rel_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+		selects_append_relation(&CONTEXT->selection, $2);
 	}
 	|INNER JOIN ID ON condition join_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
-		selects_append_join_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+		selects_append_relation(&CONTEXT->selection, $3);
+		selects_append_join_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
 		CONTEXT->condition_length = 0;
 	}
 
 rel_list:
     /* empty */
     | COMMA ID rel_list {	
-				selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+				selects_append_relation(&CONTEXT->selection, $2);
 		  }
     ;
 
 join_list:
 	/* empty */
 	| INNER JOIN ID ON condition join_list{
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_relation(&CONTEXT->selection, $3);
 	}
 	| AND condition join_list {
 
