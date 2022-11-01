@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/stmt/update_stmt.h"
+#include "sql/stmt/select_stmt.h"
 #include "common/log/log.h"
 #include "storage/common/db.h"
 #include "storage/common/table.h"
@@ -56,21 +57,33 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
       return RC::SCHEMA_FIELD_MISSING;
     }
 
-    // check fields type
-    const AttrType field_type = field_meta->type();
-    AttrType value_type = update_record.value.type;
+    if(update_record.is_sub_select) {
+      if(update_record.sub_select.attr_num != 1) {
+        return RC::GENERIC_ERROR;
+      }
+      Stmt *stmt = nullptr;
+      RC rc = SelectStmt::create(db, update_record.sub_select, stmt);
+      if(rc != RC::SUCCESS) {
+        return rc;
+      }
+      update_fields.push_back(UpdateField(table, field_meta, &update_record.value, true, stmt));
+    }else{
+      // check fields type
+      const AttrType field_type = field_meta->type();
+      AttrType value_type = update_record.value.type;
 
-    if(field_type == TEXTS && value_type == CHARS) {
-      update_record.value.type = TEXTS;
-      value_type = TEXTS;
-    }
-    if (field_type != value_type) { // TODO try to convert the value type to field type
-      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-                table_name, field_meta->name(), field_type, value_type);
-      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-    }
+      if(field_type == TEXTS && value_type == CHARS) {
+        update_record.value.type = TEXTS;
+        value_type = TEXTS;
+      }
+      if (field_type != value_type) { // TODO try to convert the value type to field type
+        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+                  table_name, field_meta->name(), field_type, value_type);
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
 
-    update_fields.push_back(UpdateField(table, field_meta, &update_record.value));
+      update_fields.push_back(UpdateField(table, field_meta, &update_record.value));
+    }
   }
 
   // create filter statement in `where` statement

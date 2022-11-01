@@ -129,7 +129,7 @@ typedef struct {
   char *attribute_name;           // Attribute to update
   int is_sub_select;
   Value value; 
-  Selects select;
+  Selects sub_select;
 }UpdateRecord;
 
 // struct of update

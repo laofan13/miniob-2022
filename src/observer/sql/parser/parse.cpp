@@ -316,42 +316,7 @@ void updates_select_append(Updates *updates, const char *attribute_name, Selects
   update_record.attribute_name = strdup(attribute_name);
 
   update_record.is_sub_select = 1;
-  Selects &sub_selects = update_record.select;
-
-  // copy RelAttr
-  for(size_t i = 0;i < selects->attr_num; i++) {
-    sub_selects.attributes[i] = selects->attributes[i];
-  }
-  sub_selects.attr_num = selects->attr_num;
-  selects->attr_num = 0;
-
-  // copy AggrAttr
-  for(size_t i = 0;i < selects->aggr_num; i++) {
-    sub_selects.aggr_attrs[i] = selects->aggr_attrs[i];
-  }
-  sub_selects.aggr_num = selects->aggr_num;
-  selects->aggr_num = 0;
-
-  // copy relations
-  for(size_t i = 0;i < selects->relation_num; i++) {
-    sub_selects.relations[i] = selects->relations[i];
-  }
-  sub_selects.relation_num = selects->relation_num;
-  selects->relation_num = 0;
-
-  // copy join_conditions
-  for(size_t i = 0;i < selects->join_num; i++) {
-    sub_selects.join_conditions[i] = selects->join_conditions[i];
-  }
-  sub_selects.join_num = selects->join_num;
-  selects->join_num = 0;
-
-  // copy conditions
-  for(size_t i = 0;i < selects->condition_num; i++) {
-    sub_selects.conditions[i] = selects->conditions[i];
-  }
-  sub_selects.condition_num = selects->condition_num;
-  selects->condition_num = 0;
+  copy_selects(selects,&update_record.sub_select);
 }
 
 void updates_destroy(Updates *updates)
@@ -365,7 +330,7 @@ void updates_destroy(Updates *updates)
     update_record.attribute_name = nullptr;
 
     if(update_record.is_sub_select) {
-      selects_destroy(&update_record.select);
+      selects_destroy(&update_record.sub_select);
     }else{
       value_destroy(&update_record.value);
     }

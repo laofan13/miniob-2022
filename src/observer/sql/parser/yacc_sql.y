@@ -414,6 +414,40 @@ update_value:
   		value_init_string(&value, $3);
 		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
 	}
+	|ID EQ LBRACE SELECT select_attr FROM ID relation where RBRACE {
+		// CONTEXT->selection.relations[CONTEXT->from_length++]=$4;
+		selects_append_relation(&CONTEXT->selection, $7);
+
+		selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
+
+		CONTEXT->ssql->flag=SCF_SELECT;//"select";
+		// CONTEXT->selection.attr_num = CONTEXT->select_length;
+
+		updates_select_append(&CONTEXT->ssql->sstr.update,$1, &CONTEXT->selection);
+
+		//临时变量清零
+		CONTEXT->condition_length=0;
+		CONTEXT->from_length=0;
+		CONTEXT->select_length=0;
+		CONTEXT->value_length = 0;
+	}
+	|ID EQ LBRACE SELECT aggr_attr FROM ID rel_list where RBRACE {
+		// CONTEXT->selection.relations[CONTEXT->from_length++]=$4;
+		selects_append_relation(&CONTEXT->selection, $7);
+
+		selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
+
+		CONTEXT->ssql->flag=SCF_SELECT;//"select";
+		// CONTEXT->selection.attr_num = CONTEXT->select_length;
+
+		updates_select_append(&CONTEXT->ssql->sstr.update,$1, &CONTEXT->selection);
+
+		//临时变量清零
+		CONTEXT->condition_length=0;
+		CONTEXT->from_length=0;
+		CONTEXT->select_length=0;
+		CONTEXT->value_length = 0;
+	}
     ;
 
 
