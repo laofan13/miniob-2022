@@ -11,6 +11,7 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by Wangyunlai on 2022/5/22.
 //
+#include<cmath>
 
 #include "sql/stmt/update_stmt.h"
 #include "sql/stmt/select_stmt.h"
@@ -68,6 +69,7 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
       // check fields type
       const AttrType field_type = field_meta->type();
       AttrType value_type = update_record.value.type;
+      void *data = update_record.value.data;
 
       if(field_type == TEXTS && value_type == CHARS) {
         update_record.value.type = TEXTS;
@@ -82,9 +84,51 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
         }
       }else{
         if (field_type != value_type) { // TODO try to convert the value type to field type
-          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+          if (field_type == INTS && value_type == FLOATS) {
+            int val = round(*(float *)data);
+            *(int *)data = val;
+          }else if (field_type == INTS && value_type == CHARS) {
+            int val = std::atoi((char *)(data));
+            *(int *)data = val;
+          }else if (field_type == FLOATS && value_type == INTS) {
+            float val = *(int *)data;
+            *(float *)data = val;
+          }else if (field_type == FLOATS && value_type == CHARS) {
+            float val = std::atof((char *)(data));
+            *(float *)data = val;
+          }else if (field_type == CHARS && value_type == INTS) {
+            std::string s = std::to_string(*(int *)data);
+            char *str = (char *)(data);
+            int i =0;
+            for(;i < 4 && i < s.size();i++) {
+              str[i] = s[i];
+            }
+            if(i < 4) {
+              str[i] = '\0';
+            }else{
+              str[4] = '\0';
+            }
+          }else if (field_type == CHARS && value_type == FLOATS) {
+            std::ostringstream oss;
+            oss<<*(float *)data;
+            std::string s(oss.str());
+            char *str = (char *)(data);
+            int i =0;
+            for(;i < 4 && i < s.size();i++) {
+              str[i] = s[i];
+            }
+            if(i < 4) {
+              str[i] = '\0';
+            }else{
+              str[4] = '\0';
+            }
+          }else if(field_type == TEXTS && value_type == CHARS){
+            update_record.value.type = TEXTS;
+          }else{
+            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                   table_name, field_meta->name(), field_type, value_type);
-          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
         }
       }
 

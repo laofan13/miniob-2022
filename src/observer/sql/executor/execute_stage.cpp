@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by Meiyi & Longda on 2021/4/13.
 //
 
+#include<cmath>
 #include <string>
 #include <sstream>
 
@@ -861,6 +862,58 @@ RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
     value.data = (void *)cell.data();
     value.type = cell.attr_type();
   }
+
+  const AttrType field_type = update.attr_type();
+  AttrType value_type = value.type;
+  void *data = value.data;
+  if (field_type != value_type) { // TODO try to convert the value type to field type
+    if (field_type == INTS && value_type == FLOATS) {
+      float f = *(float *)data;
+      int val = round(*(float *)data);
+      *(int *)data = val;
+    }else if (field_type == INTS && value_type == CHARS) {
+      int val = std::atoi((char *)(data));
+      *(int *)data = val;
+    }else if (field_type == FLOATS && value_type == INTS) {
+      float val = *(int *)data;
+      *(float *)data = val;
+    }else if (field_type == FLOATS && value_type == CHARS) {
+      float val = std::atof((char *)(data));
+      *(float *)data = val;
+    }else if (field_type == CHARS && value_type == INTS) {
+      std::string s = std::to_string(*(int *)data);
+      char *str = (char *)(data);
+      int i =0;
+      for(;i < 4 && i < s.size();i++) {
+        str[i] = s[i];
+      }
+      if(i < 4) {
+        str[i] = '\0';
+      }else{
+        str[4] = '\0';
+      }
+    }else if (field_type == CHARS && value_type == FLOATS) {
+      std::ostringstream oss;
+      oss<<*(float *)data;
+      std::string s(oss.str());
+      char *str = (char *)(data);
+      int i =0;
+      for(;i < 4 && i < s.size();i++) {
+        str[i] = s[i];
+      }
+      if(i < 4) {
+        str[i] = '\0';
+      }else{
+        str[4] = '\0';
+      }
+    }else if(field_type == TEXTS && value_type == CHARS){
+      value.type = TEXTS;
+    }else{
+      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+            update.table_name(), update.field_name(), field_type, value_type);
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+  }
   update.set_select_value(value);
   aggr_oper.close();
   return rc;
@@ -902,18 +955,24 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
-
   Tuple * tuple = nullptr;
-  if((rc = project_oper.next()) == RC::SUCCESS) {
-    tuple = project_oper.current_tuple();
+  int num = 0;
+  while((rc = project_oper.next()) == RC::SUCCESS) {
+    if(num == 0) {
+      tuple = project_oper.current_tuple();
+    }
+    num++;
   }
 
-  if(tuple->cell_num() != 1) {
+  if(num > 1) {
     return RC::GENERIC_ERROR;
   }
 
   Value value;
   if(tuple != nullptr) {
+    if(tuple->cell_num() != 1) {
+      return RC::GENERIC_ERROR;
+    }
     TupleCell cell;
     rc = tuple->cell_at(0, cell);
     if(rc != RC::SUCCESS) {
@@ -924,8 +983,59 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
   }else{
     value.type = NULLS;
   }
-  update.set_select_value(value);
 
+  const AttrType field_type = update.attr_type();
+  AttrType value_type = value.type;
+  void *data = value.data;
+  if (field_type != value_type) { // TODO try to convert the value type to field type
+    if (field_type == INTS && value_type == FLOATS) {
+      int val = round(*(float *)data);
+      *(int *)data = val;
+    }else if (field_type == INTS && value_type == CHARS) {
+      int val = std::atoi((char *)(data));
+      *(int *)data = val;
+    }else if (field_type == FLOATS && value_type == INTS) {
+      float val = *(int *)data;
+      *(float *)data = val;
+    }else if (field_type == FLOATS && value_type == CHARS) {
+      float val = std::atof((char *)(data));
+      *(float *)data = val;
+    }else if (field_type == CHARS && value_type == INTS) {
+      std::string s = std::to_string(*(int *)data);
+      char *str = (char *)(data);
+      int i =0;
+      for(;i < 4 && i < s.size();i++) {
+        str[i] = s[i];
+      }
+      if(i < 4) {
+        str[i] = '\0';
+      }else{
+        str[4] = '\0';
+      }
+    }else if (field_type == CHARS && value_type == FLOATS) {
+      std::ostringstream oss;
+      oss<<*(float *)data;
+      std::string s(oss.str());
+      char *str = (char *)(data);
+      int i =0;
+      for(;i < 4 && i < s.size();i++) {
+        str[i] = s[i];
+      }
+      if(i < 4) {
+        str[i] = '\0';
+      }else{
+        str[4] = '\0';
+      }
+    }else if(field_type == TEXTS && value_type == CHARS){
+      value.type = TEXTS;
+    }else{
+      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+            update.table_name(), update.field_name(), field_type, value_type);
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+  }
+
+  update.set_select_value(value);
   if (rc != RC::RECORD_EOF) {
     LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
     project_oper.close();
@@ -948,6 +1058,7 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
     if(update.is_has_subselect()) {
       RC rc = do_update_sub_select(update);
       if(rc != RC::SUCCESS) {
+        session_event->set_response("FAILURE\n");
         return rc;
       }
     }
