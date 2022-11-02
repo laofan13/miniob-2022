@@ -214,11 +214,13 @@ std::vector<TupleCell> AggrOperator::aggr_results() {
       }else if(attr_type == FLOATS) {
         *(float *)(value.data) /=(float)tuple_num_;
       }
+      float f = *(float *)value.data;
       if(value.type == NULLS) {
         aggr_result.push_back(TupleCell(NULLS,4,(char *)value.data));
       }else{
         aggr_result.push_back(TupleCell(FLOATS,4,(char *)value.data));
       }
+      
     } break;
     case SUM_FUNC:{
       aggr_result.push_back(TupleCell(value.type, 4 ,(char *)value.data));

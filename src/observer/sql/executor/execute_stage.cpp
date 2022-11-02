@@ -868,57 +868,60 @@ RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
     value.type = cell.attr_type();
   }
 
-  const AttrType field_type = update.attr_type();
-  AttrType value_type = value.type;
-  void *data = value.data;
-  if (field_type != value_type) { // TODO try to convert the value type to field type
-    if (field_type == INTS && value_type == FLOATS) {
-      float f = *(float *)data;
-      int val = round(*(float *)data);
-      *(int *)data = val;
-    }else if (field_type == INTS && value_type == CHARS) {
-      int val = std::atoi((char *)(data));
-      *(int *)data = val;
-    }else if (field_type == FLOATS && value_type == INTS) {
-      float val = *(int *)data;
-      *(float *)data = val;
-    }else if (field_type == FLOATS && value_type == CHARS) {
-      float val = std::atof((char *)(data));
-      *(float *)data = val;
-    }else if (field_type == CHARS && value_type == INTS) {
-      std::string s = std::to_string(*(int *)data);
-      char *str = (char *)(data);
-      int i =0;
-      for(;i < 4 && i < s.size();i++) {
-        str[i] = s[i];
-      }
-      if(i < 4) {
-        str[i] = '\0';
+  if(value.type != NULLS) {
+    const AttrType field_type = update.attr_type();
+    AttrType value_type = value.type;
+    void *data = value.data;
+    if (field_type != value_type) { // TODO try to convert the value type to field type
+      if (field_type == INTS && value_type == FLOATS) {
+        float f = *(float *)data;
+        int val = round(*(float *)data);
+        *(int *)data = val;
+      }else if (field_type == INTS && value_type == CHARS) {
+        int val = std::atoi((char *)(data));
+        *(int *)data = val;
+      }else if (field_type == FLOATS && value_type == INTS) {
+        float val = *(int *)data;
+        *(float *)data = val;
+      }else if (field_type == FLOATS && value_type == CHARS) {
+        float val = std::atof((char *)(data));
+        *(float *)data = val;
+      }else if (field_type == CHARS && value_type == INTS) {
+        std::string s = std::to_string(*(int *)data);
+        char *str = (char *)(data);
+        int i =0;
+        for(;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+        }
+        if(i < 4) {
+          str[i] = '\0';
+        }else{
+          str[4] = '\0';
+        }
+      }else if (field_type == CHARS && value_type == FLOATS) {
+        std::ostringstream oss;
+        oss<<*(float *)data;
+        std::string s(oss.str());
+        char *str = (char *)(data);
+        int i =0;
+        for(;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+        }
+        if(i < 4) {
+          str[i] = '\0';
+        }else{
+          str[4] = '\0';
+        }
+      }else if(field_type == TEXTS && value_type == CHARS){
+        value.type = TEXTS;
       }else{
-        str[4] = '\0';
+        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+              update.table_name(), update.field_name(), field_type, value_type);
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       }
-    }else if (field_type == CHARS && value_type == FLOATS) {
-      std::ostringstream oss;
-      oss<<*(float *)data;
-      std::string s(oss.str());
-      char *str = (char *)(data);
-      int i =0;
-      for(;i < 4 && i < s.size();i++) {
-        str[i] = s[i];
-      }
-      if(i < 4) {
-        str[i] = '\0';
-      }else{
-        str[4] = '\0';
-      }
-    }else if(field_type == TEXTS && value_type == CHARS){
-      value.type = TEXTS;
-    }else{
-      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-            update.table_name(), update.field_name(), field_type, value_type);
-      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
   }
+  
   update.set_select_value(value);
   aggr_oper.close();
   return rc;
@@ -970,74 +973,77 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     num++;
   }
 
-  if(num > 1) {
+  if(nullptr == tuple || num > 1) {
+    return RC::GENERIC_ERROR;
+  }
+  if(tuple->cell_num() != 1) {
     return RC::GENERIC_ERROR;
   }
 
   Value value;
-  if(tuple != nullptr) {
-    if(tuple->cell_num() != 1) {
-      return RC::GENERIC_ERROR;
-    }
-    TupleCell cell;
-    rc = tuple->cell_at(0, cell);
-    if(rc != RC::SUCCESS) {
-      return rc;
-    }
-    value.data = (void *)cell.data();
-    value.type = cell.attr_type();
-  }else{
-    value.type = NULLS;
+  TupleCell cell;
+  rc = tuple->cell_at(0, cell);
+  if(rc != RC::SUCCESS) {
+    return rc;
   }
 
-  const AttrType field_type = update.attr_type();
-  AttrType value_type = value.type;
-  void *data = value.data;
-  if (field_type != value_type) { // TODO try to convert the value type to field type
-    if (field_type == INTS && value_type == FLOATS) {
-      int val = round(*(float *)data);
-      *(int *)data = val;
-    }else if (field_type == INTS && value_type == CHARS) {
-      int val = std::atoi((char *)(data));
-      *(int *)data = val;
-    }else if (field_type == FLOATS && value_type == INTS) {
-      float val = *(int *)data;
-      *(float *)data = val;
-    }else if (field_type == FLOATS && value_type == CHARS) {
-      float val = std::atof((char *)(data));
-      *(float *)data = val;
-    }else if (field_type == CHARS && value_type == INTS) {
-      std::string s = std::to_string(*(int *)data);
-      char *str = (char *)(data);
-      int i =0;
-      for(;i < 4 && i < s.size();i++) {
-        str[i] = s[i];
-      }
-      if(i < 4) {
-        str[i] = '\0';
+  if(cell.attr_type() == NULLS) {
+    value.type = NULLS;
+  }else {
+    value.data = (void *)cell.data();
+    value.type = cell.attr_type();
+  }
+
+  if(value.type != NULLS) {
+    const AttrType field_type = update.attr_type();
+    AttrType value_type = value.type;
+    void *data = value.data;
+    if (field_type != value_type) { // TODO try to convert the value type to field type
+      if (field_type == INTS && value_type == FLOATS) {
+        int val = round(*(float *)data);
+        *(int *)data = val;
+      }else if (field_type == INTS && value_type == CHARS) {
+        int val = std::atoi((char *)(data));
+        *(int *)data = val;
+      }else if (field_type == FLOATS && value_type == INTS) {
+        float val = *(int *)data;
+        *(float *)data = val;
+      }else if (field_type == FLOATS && value_type == CHARS) {
+        float val = std::atof((char *)(data));
+        *(float *)data = val;
+      }else if (field_type == CHARS && value_type == INTS) {
+        std::string s = std::to_string(*(int *)data);
+        char *str = (char *)(data);
+        int i =0;
+        for(;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+        }
+        if(i < 4) {
+          str[i] = '\0';
+        }else{
+          str[4] = '\0';
+        }
+      }else if (field_type == CHARS && value_type == FLOATS) {
+        std::ostringstream oss;
+        oss<<*(float *)data;
+        std::string s(oss.str());
+        char *str = (char *)(data);
+        int i =0;
+        for(;i < 4 && i < s.size();i++) {
+          str[i] = s[i];
+        }
+        if(i < 4) {
+          str[i] = '\0';
+        }else{
+          str[4] = '\0';
+        }
+      }else if(field_type == TEXTS && value_type == CHARS){
+        value.type = TEXTS;
       }else{
-        str[4] = '\0';
+        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+              update.table_name(), update.field_name(), field_type, value_type);
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       }
-    }else if (field_type == CHARS && value_type == FLOATS) {
-      std::ostringstream oss;
-      oss<<*(float *)data;
-      std::string s(oss.str());
-      char *str = (char *)(data);
-      int i =0;
-      for(;i < 4 && i < s.size();i++) {
-        str[i] = s[i];
-      }
-      if(i < 4) {
-        str[i] = '\0';
-      }else{
-        str[4] = '\0';
-      }
-    }else if(field_type == TEXTS && value_type == CHARS){
-      value.type = TEXTS;
-    }else{
-      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-            update.table_name(), update.field_name(), field_type, value_type);
-      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
     }
   }
 
