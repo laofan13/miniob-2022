@@ -122,6 +122,7 @@ ParserContext *get_context(yyscan_t scanner)
 		UNIQUE
 		NULL_T
 		NULLABLE_T
+		IS_T
 
 %union {
   struct _Attr *attr;
@@ -782,6 +783,8 @@ comOp:
     | NE { CONTEXT->comp = NOT_EQUAL; }
 	| LIKE { CONTEXT->comp = LIKE_TO; }
 	| NOT LIKE { CONTEXT->comp = NOT_LIKE; }
+	| IS_T { CONTEXT->comp = IS_TO; }
+	| IS_T NOT { CONTEXT->comp = IS_NOT; }
     ;
 
 load_data:
