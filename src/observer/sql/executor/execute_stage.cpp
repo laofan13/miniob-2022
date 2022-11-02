@@ -839,10 +839,15 @@ RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
 
-  TableScanOperator scan_oper(select_stmt->tables()[0]);
+  Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+
+  DEFER([&] () {
+    delete scan_oper;
+    delete select_stmt;
+  });
 
   PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&scan_oper);
+  pred_oper.add_child(scan_oper);
 
   AggrOperator aggr_oper(select_stmt);
   aggr_oper.add_child(&pred_oper);
@@ -946,6 +951,7 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
 
   ProjectOperator project_oper;
   project_oper.add_child(&pred_oper);
+  
   for (const Field &field : select_stmt->query_fields()) {
     project_oper.add_projection(field.table(), field.meta());
   }
