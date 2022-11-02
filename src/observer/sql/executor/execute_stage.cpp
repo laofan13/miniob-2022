@@ -964,11 +964,22 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
+  TupleCell cell;
   Tuple * tuple = nullptr;
   int num = 0;
   while((rc = project_oper.next()) == RC::SUCCESS) {
     if(num == 0) {
       tuple = project_oper.current_tuple();
+      if(nullptr == tuple) {
+        return RC::GENERIC_ERROR;
+      }
+      if(tuple->cell_num() != 1) {
+        return RC::GENERIC_ERROR;
+      }
+      rc = tuple->cell_at(0, cell);
+      if(rc != RC::SUCCESS) {
+        return rc;
+      }
     }
     num++;
   }
@@ -976,19 +987,14 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
   if(nullptr == tuple || num > 1) {
     return RC::GENERIC_ERROR;
   }
-  if(tuple->cell_num() != 1) {
-    return RC::GENERIC_ERROR;
-  }
 
   Value value;
-  TupleCell cell;
-  rc = tuple->cell_at(0, cell);
-  if(rc != RC::SUCCESS) {
-    return rc;
-  }
-
   if(cell.attr_type() == NULLS) {
-    value.type = NULLS;
+    if(update.meta()->nullable()) {
+      value.type = NULLS;
+    }else{
+      return RC::GENERIC_ERROR;
+    }
   }else {
     value.data = (void *)cell.data();
     value.type = cell.attr_type();

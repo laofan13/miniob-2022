@@ -47,6 +47,7 @@ UPDATE Update_table_3 SET col1=(select col2 from Update_table_2);
 -- echo 11. TYPECAST
 UPDATE Update_table_3 SET t_name=2,col1=2.0 WHERE id=2;
 SELECT * FROM Update_table_3;
+SELECT * FROM Update_table_2;
 select Update_table_2.col1 from Update_table_2 where Update_table_2.id=1;
 select avg(Update_table_2.col1) from Update_table_2;
 UPDATE Update_table_3 SET t_name=(select Update_table_2.col1 from Update_table_2 where Update_table_2.id=1),col1=(select avg(Update_table_2.col1) from Update_table_2) where id=1;
