@@ -58,9 +58,6 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
     }
 
     if(update_record.is_sub_select) {
-      if(update_record.sub_select.attr_num != 1) {
-        return RC::GENERIC_ERROR;
-      }
       Stmt *stmt = nullptr;
       RC rc = SelectStmt::create(db, update_record.sub_select, stmt);
       if(rc != RC::SUCCESS) {

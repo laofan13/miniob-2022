@@ -28,3 +28,12 @@ SELECT * FROM Update_table_2;
 -- echo 2. UPDATE ROWS
 UPDATE Update_table_3 SET t_name=(select Update_table_2.t_name from Update_table_2 where Update_table_2.id=2);
 SELECT * FROM Update_table_3;
+
+
+-- echo 9. AGGREGATION
+select max(Update_table_2.col2) from Update_table_2;
+select max(Update_table_2.col1) from Update_table_2;
+
+SELECT * FROM Update_table_3;
+UPDATE Update_table_3 SET col1=(select max(Update_table_2.col2) from Update_table_2),col2=(select max(Update_table_2.col1) from Update_table_2) where id=1;
+SELECT * FROM Update_table_3;

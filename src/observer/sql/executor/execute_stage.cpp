@@ -835,12 +835,45 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
 }
 
 RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
-  
+  SelectStmt *select_stmt = update.select_stmt();
+  RC rc = RC::SUCCESS;
+
+  TableScanOperator scan_oper(select_stmt->tables()[0]);
+
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(&scan_oper);
+
+  AggrOperator aggr_oper(select_stmt);
+  aggr_oper.add_child(&pred_oper);
+
+  rc = aggr_oper.open();
+  if (rc != RC::SUCCESS) {
+    return rc;
+  } 
+
+  auto aggr_results = aggr_oper.aggr_results();
+
+  Value value;
+  if(aggr_results.empty()) {
+    value.type = NULLS;
+  }else{
+    TupleCell cell = aggr_results[0];
+    value.data = (void *)cell.data();
+    value.type = cell.attr_type();
+  }
+  update.set_select_value(value);
+  aggr_oper.close();
+  return rc;
 }
 
 RC ExecuteStage::do_update_sub_select(UpdateField &update){
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
+
+  // 聚合查询
+  if(!select_stmt->aggr_fields().empty()){
+    return do_update_sub_select_aggregation(update);
+  }
 
   if (select_stmt->tables().size() != 1) {
     LOG_WARN("select more than 1 tables is not supported");
@@ -848,7 +881,7 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
-  Operator *scan_oper = scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+  Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
 
   DEFER([&] () {
     delete scan_oper;
