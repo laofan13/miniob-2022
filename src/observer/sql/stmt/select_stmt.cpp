@@ -208,16 +208,17 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
   rc = FilterStmt::create(db, default_table, &table_map,
-           select_sql.conditions, select_sql.condition_num, filter_stmt);
+          select_sql.conditions, select_sql.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");
     return rc;
   }
+  
 
   // create filter statement in `where` statement
   FilterStmt *join_stmt = nullptr;
   rc = FilterStmt::create(db, default_table, &table_map,
-           select_sql.join_conditions, select_sql.join_num, join_stmt);
+          select_sql.join_conditions, select_sql.join_num, join_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct join stmt");
     return rc;

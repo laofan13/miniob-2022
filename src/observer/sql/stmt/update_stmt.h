@@ -34,7 +34,7 @@ public:
 
 public:
   Table *table() const {return table_;}
-  const std::vector<UpdateField> &update_fields() const { return update_fields_; }
+  std::vector<UpdateField> &update_fields() { return update_fields_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
   int value_amount() const { return value_amount_; }
 

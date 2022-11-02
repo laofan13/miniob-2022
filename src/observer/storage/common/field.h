@@ -16,7 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
-#include "sql/stmt/stmt.h"
+#include "sql/stmt/select_stmt.h"
 
 class Field
 {
@@ -108,18 +108,16 @@ public:
   UpdateField(const Table *table, const FieldMeta *field, const Value* value) :
   Field(table,field), value_(value)
   {}
-  UpdateField(const Table *table, const FieldMeta *field, const Value* value,bool is_subselect, Stmt *stmt) :
-  Field(table,field), value_(value) ,is_subselect_(is_subselect),stmt_(stmt)
+  UpdateField(const Table *table, const FieldMeta *field, const Value* value,bool is_subselect, SelectStmt *select_stmt) :
+  Field(table,field), value_(value) ,is_subselect_(is_subselect), select_stmt_(select_stmt)
   {}
 
   ~UpdateField () {
-    if(is_subselect_ && stmt_ != nullptr) {
-      delete stmt_;
-    }
+    
   }
 
-  const Value *value() const { 
-    return value_; 
+  const Value value() const { 
+    return *value_; 
   };
   void set_value(const Value* value)
   {
@@ -134,12 +132,23 @@ public:
     this->is_subselect_ = is_subselect;
   }
 
-  const Stmt * stmt() const {
-    return stmt_; 
+  SelectStmt * select_stmt() const {
+    return select_stmt_; 
   };
+
+  void set_select_value(Value &select_value)
+  {
+    this->select_value_ = select_value;
+  }
+
+  Value select_value() const
+  {
+    return select_value_;
+  }
 
 private:
   const Value *value_ = nullptr;
   bool is_subselect_ = false;
-  Stmt *stmt_ = nullptr;
+  SelectStmt *select_stmt_ = nullptr;
+  Value select_value_;
 };

@@ -602,7 +602,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
 
   // 内连接查询
   FilterStmt *join_stmt = select_stmt->join_stmt();
-  if(!join_stmt->filter_units().empty()){
+  if(join_stmt != nullptr && !join_stmt->filter_units().empty()){
     return do_select_join(sql_event);
   }
 
@@ -834,6 +834,74 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   return rc;
 }
 
+RC ExecuteStage::do_update_sub_select(UpdateField &update){
+  SelectStmt *select_stmt = update.select_stmt();
+  RC rc = RC::SUCCESS;
+
+  if (select_stmt->tables().size() != 1) {
+    LOG_WARN("select more than 1 tables is not supported");
+    rc = RC::UNIMPLENMENT;
+    return rc;
+  }
+
+  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
+  if (nullptr == scan_oper) {
+    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+  }
+
+  DEFER([&] () {
+    delete scan_oper;
+    delete select_stmt;
+  });
+
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(scan_oper);
+
+  ProjectOperator project_oper;
+  project_oper.add_child(&pred_oper);
+  for (const Field &field : select_stmt->query_fields()) {
+    project_oper.add_projection(field.table(), field.meta());
+  }
+  rc = project_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+
+  Tuple * tuple = nullptr;
+  while ((rc = project_oper.next()) == RC::SUCCESS) {
+    tuple = project_oper.current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+  }
+
+  if(tuple->cell_num() != 1) {
+    return RC::GENERIC_ERROR;
+  }
+
+  TupleCell cell;
+  rc = tuple->cell_at(0, cell);
+  if(rc != RC::SUCCESS) {
+    return rc;
+  }
+  Value value;
+  value.data = (char *)cell.data();
+  value.type = cell.attr_type();
+  update.set_select_value(value);
+
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    project_oper.close();
+  } else {
+    rc = project_oper.close();
+  }
+  return rc;
+}
+
 RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   UpdateStmt *update_stmt = (UpdateStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
@@ -841,6 +909,15 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   if (update_stmt == nullptr) {
     LOG_WARN("cannot find statement");
     return RC::GENERIC_ERROR;
+  }
+
+  for(auto &update: update_stmt->update_fields()) {
+    if(update.is_has_subselect()) {
+      RC rc = do_update_sub_select(update);
+      if(rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
   }
 
   Operator *scan_oper = try_to_create_index_scan_operator(update_stmt->filter_stmt());
@@ -986,3 +1063,5 @@ RC ExecuteStage::do_clog_sync(SQLStageEvent *sql_event)
 
   return rc;
 }
+
+

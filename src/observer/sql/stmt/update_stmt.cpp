@@ -66,7 +66,7 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
       if(rc != RC::SUCCESS) {
         return rc;
       }
-      update_fields.push_back(UpdateField(table, field_meta, &update_record.value, true, stmt));
+      update_fields.push_back(UpdateField(table, field_meta, &update_record.value, true, (SelectStmt *)stmt));
     }else{
       // check fields type
       const AttrType field_type = field_meta->type();

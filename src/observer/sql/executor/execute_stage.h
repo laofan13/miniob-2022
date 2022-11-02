@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 class SQLStageEvent;
 class SessionEvent;
 class SelectStmt;
+class UpdateField;
 
 class ExecuteStage : public common::Stage {
 public:
@@ -51,6 +52,8 @@ protected:
   RC do_select_aggregation(SQLStageEvent *sql_event);
   RC do_select_join(SQLStageEvent *sql_event);
   RC do_insert(SQLStageEvent *sql_event);
+
+  RC do_update_sub_select(UpdateField &update);
   RC do_update(SQLStageEvent *sql_event);
   RC do_delete(SQLStageEvent *sql_event);
   RC do_begin(SQLStageEvent *sql_event);

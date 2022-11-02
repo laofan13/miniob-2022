@@ -71,26 +71,32 @@ Record UpdateOperator::update_record(Record &record){
   int bit_map = *(int *)(record_data + null_meta->offset());
 
   // update correspond field
-  for(auto &field: update_stmt_->update_fields()) {
-    auto field_meta = field.meta();
-    auto value = field.value();
+  for(auto &update: update_stmt_->update_fields()) {
+    auto field_meta = update.meta();
+
+    Value value;
+    if(update.is_has_subselect()) {
+       value = update.select_value();
+    }else{
+      value = update.value();
+    }
     size_t copy_len = field_meta->len();
 
-    if(value->type == NULLS) {
+    if(value.type == NULLS) {
       bit_map |= 1 << field_meta->col_num();
     }else{
        if (field_meta->type() == CHARS) {
-        const size_t data_len = strlen((const char *)value->data);
+        const size_t data_len = strlen((const char *)value.data);
         if (copy_len > data_len) {
           copy_len = data_len + 1;
         }
       }
       if(field_meta->type() == TEXTS) {
-        char *text_data = (char *)value->data;
+        char *text_data = (char *)value.data;
         RC rc = table->update_text_record(record_data + field_meta->offset(), text_data + TEXTPATCHSIZE);
         memcpy(record_data + field_meta->offset() + PAGENUMSIZE, text_data, TEXTPATCHSIZE);
       }else{
-        memcpy(record_data + field_meta->offset(), value->data, copy_len);
+        memcpy(record_data + field_meta->offset(), value.data, copy_len);
       }
       bit_map &= ~(1 << field_meta->col_num());
     }
