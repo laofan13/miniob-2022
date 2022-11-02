@@ -61,13 +61,13 @@ RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
       const AttrType value_type = values[i].type;
       void *data = values[i].data;
 
-      if(value_type == NULLS && !field_meta->nullable()) { // 值是空类型
-        LOG_WARN("field type mismatch. table=%s, field=%s, field is not nullable, value_type=%d", 
-                table_name, field_meta->name(),  value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-      }else{
-        continue;
-      }
+      // if(value_type == NULLS && !field_meta->nullable()) { // 值是空类型
+      //   LOG_WARN("field type mismatch. table=%s, field=%s, field is not nullable, value_type=%d", 
+      //           table_name, field_meta->name(),  value_type);
+      //   return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      // }else{
+      //   continue;
+      // }
 
       if (field_type != value_type) { // TODO try to convert the value type to field type
         if (field_type == INTS && value_type == FLOATS) {
