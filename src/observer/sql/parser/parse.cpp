@@ -75,6 +75,11 @@ void value_init_date(Value *value, const char *v) {
   value->data = malloc(sizeof(dv));
   memcpy(value->data, &dv, sizeof(dv));
 }
+void value_init_null(Value *value) {
+  value->type = NULLS;
+  value->data = nullptr;
+}
+
 void value_destroy(Value *value)
 {
   value->type = UNDEFINED;

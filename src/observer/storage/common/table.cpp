@@ -382,26 +382,38 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   int record_size = table_meta_.record_size();
   char *record = new char[record_size];
 
+  // 空值 bit位图
+  int bit_map = 0;
+
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
     size_t copy_len = field->len();
-    if (field->type() == CHARS) {
-      const size_t data_len = strlen((const char *)value.data);
-      if (copy_len > data_len) {
-        copy_len = data_len + 1;
+
+    if(value.type == NULLS) {
+      bit_map |= 1 << normal_field_start_index + i;
+    }else{ //如果为空值，则填充
+      if (field->type() == CHARS) {
+        const size_t data_len = strlen((const char *)value.data);
+        if (copy_len > data_len) {
+          copy_len = data_len + 1;
+        }
       }
-    }
-    if(field->type() == TEXTS) {
-      RC rc = insert_text_record(field, record,value);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
-        return rc;
+      if(field->type() == TEXTS) {
+        RC rc = insert_text_record(field, record,value);
+        if (rc != RC::SUCCESS) {
+          LOG_WARN("make text to faild rc=%d:%s",  rc, strrc(rc));
+          return rc;
+        }
+      }else{
+        memcpy(record + field->offset(), value.data, copy_len);
       }
-    }else{
-      memcpy(record + field->offset(), value.data, copy_len);
     }
   }
+
+  // null_meta 描述 空值元数据
+  auto null_meta = table_meta_.null_meta();
+  memcpy(record + null_meta->offset(), (char *)&bit_map, null_meta->len());
 
   record_out = record;
   return RC::SUCCESS;

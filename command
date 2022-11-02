@@ -208,7 +208,6 @@ python3 miniob_test.py \
         --log=stdout
 
 # primary-null
-
 python3 miniob_test.py \
         --test-case-dir=./test  \
         --test-case-scores=case-scores.json \

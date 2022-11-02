@@ -53,7 +53,6 @@ RC TableMeta::init_sys_fields()
   FieldMeta null_meta;
   rc = null_meta.init("null_meta", INTS, 4, 4, false, false);
   sys_fields_.push_back(null_meta);
-  
   return rc;
 }
 
@@ -154,6 +153,11 @@ int TableMeta::field_num() const
 int TableMeta::sys_field_num() const
 {
   return sys_fields_.size();
+}
+
+const FieldMeta *TableMeta::null_meta() const
+{
+  return &sys_fields_.back();
 }
 
 const IndexMeta *TableMeta::index(const char *name) const

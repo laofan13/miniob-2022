@@ -42,8 +42,8 @@ RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
+  // check the fields number
   for(int i = 0; i < inserts.record_num; i++) {
-    // check the fields number
     Value *values = inserts.records[i].values;
     const int value_num = inserts.records[i].value_num;
     const TableMeta &table_meta = table->table_meta();
@@ -60,6 +60,14 @@ RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
       const AttrType field_type = field_meta->type();
       const AttrType value_type = values[i].type;
       void *data = values[i].data;
+
+      if(value_type == NULLS && !field_meta->nullable()) { // 值是空类型
+        LOG_WARN("field type mismatch. table=%s, field=%s, field is not nullable, value_type=%d", 
+                table_name, field_meta->name(),  value_type);
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }else{
+        continue;
+      }
 
       if (field_type != value_type) { // TODO try to convert the value type to field type
         if (field_type == INTS && value_type == FLOATS) {

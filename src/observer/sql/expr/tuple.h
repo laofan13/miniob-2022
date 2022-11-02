@@ -87,11 +87,15 @@ public:
   void set_record(Record *record)
   {
     this->record_ = record;
+
+    // 首先获取 null_meta
+    memcpy(&null_map_,record->data() + null_meta_->offset(),null_meta_->len());
   }
 
   void set_schema(const Table *table, const std::vector<FieldMeta> *fields)
   {
     table_ = table;
+    null_meta_ = table_->table_meta().null_meta();
     this->speces_.reserve(fields->size());
     for (const FieldMeta &field : *fields) {
       speces_.push_back(std::make_shared<TupleCellSpec>(new FieldExpr(table, &field)));
@@ -115,7 +119,11 @@ public:
     const FieldMeta *field_meta = field_expr->field().meta();
 
     char *data = this->record_->data();
-    cell.set_type(field_meta->type());
+    if(null_map_ & (1 << index)) {
+      cell.set_type(NULLS);
+    }else{
+       cell.set_type(field_meta->type());
+    }
     cell.set_data(data+ field_meta->offset());
     cell.set_length(field_meta->len());
 
@@ -188,6 +196,9 @@ private:
   Record *record_ = nullptr;
   const Table *table_ = nullptr;
   std::vector<std::shared_ptr<TupleCellSpec>> speces_;
+
+  int null_map_;
+  const FieldMeta *null_meta_;
 };
 
 

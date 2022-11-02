@@ -51,11 +51,7 @@ public:
   int compare(const TupleCell &other) const;
   int like_match(const TupleCell &other) const;
 
-  const char *data() const
-  {
-    return data_;
-  }
-
+  const char *data() const { return data_;}
   int length() const { return length_; }
 
   AttrType attr_type() const
@@ -67,7 +63,6 @@ public:
     text_data_ = new char[TEXTPAGESIZE];
   }
   char * text_data() {return text_data_;}
-
 private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = -1;

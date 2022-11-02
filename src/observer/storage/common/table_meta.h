@@ -46,6 +46,8 @@ public:
   int field_num() const; // sys field included
   int sys_field_num() const;
 
+  const FieldMeta *null_meta() const;
+
   const IndexMeta *index(const char *name) const;
   const IndexMeta *find_index_by_field(const char *field) const;
   const IndexMeta *find_index_by_fields(size_t attr_num, char* fields[]) const;
