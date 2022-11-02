@@ -26,7 +26,7 @@ void AggrOperator::init_aggregation_value() {
     AttrType attr_type = aggr_field.attr_type();
 
     Value value;
-    value.type = attr_type;
+    value.type = NULLS;
     value.data = new char[4];
 
     switch (aggr_type)
@@ -96,10 +96,16 @@ void AggrOperator::aggre_value(Tuple *tuple) {
 
     Value &value = aggregation_values_[i];
 
-    if(aggr_type != COUNT_FUNC) {
-      row_tuple->find_cell(aggr_field,cell);
-    } 
+    if(row_tuple->find_cell(aggr_field, cell) != RC::SUCCESS) {
+      return ;
+    }
+
+    if(cell.attr_type() == NULLS) {
+      continue;
+    }
     
+    value.type = attr_type;
+
     switch (aggr_type)
     {
     case COUNT_FUNC: {
@@ -159,6 +165,7 @@ void AggrOperator::aggre_value(Tuple *tuple) {
         int cell_value = std::atoi(str);
         *(int *)(value.data) += cell_value;
       }
+      tuple_num_++;
     }break;
     case SUM_FUNC:{
       if(attr_type == INTS || attr_type == DATES) {
@@ -190,22 +197,35 @@ std::vector<TupleCell> AggrOperator::aggr_results() {
 
     Value &value = aggregation_values_[i];
 
-    if(aggr_type == AVG_FUNC) {
+    switch (aggr_type)
+    {
+    case COUNT_FUNC: {
+      aggr_result.push_back(TupleCell(INTS, 4, (char *)value.data));
+    } break;
+    case MAX_FUNC:{
+      aggr_result.push_back(TupleCell(value.type, 4 ,(char *)value.data));
+    }break;
+    case MIN_FUNC:{
+      aggr_result.push_back(TupleCell(value.type, 4 ,(char *)value.data));
+    }break;
+    case AVG_FUNC:{
       if(attr_type == INTS || attr_type == DATES || attr_type == CHARS) {
         *(float *)(value.data) = 1.0 * (*(int *)(value.data)) / tuple_num_;
       }else if(attr_type == FLOATS) {
         *(float *)(value.data) /=(float)tuple_num_;
       }
+      if(value.type == NULLS) {
+        aggr_result.push_back(TupleCell(NULLS,4,(char *)value.data));
+      }else{
+        aggr_result.push_back(TupleCell(FLOATS,4,(char *)value.data));
+      }
+    } break;
+    case SUM_FUNC:{
+      aggr_result.push_back(TupleCell(value.type, 4 ,(char *)value.data));
+    } break;
+    default:
+      break;
     }
-    
-    if(aggr_type == COUNT_FUNC) {
-      aggr_result.push_back(TupleCell(INTS,4,(char *)value.data));
-    }else if(aggr_type == AVG_FUNC){
-      aggr_result.push_back(TupleCell(FLOATS,4,(char *)value.data));
-    }else{
-      aggr_result.push_back(TupleCell(value.type,4,(char *)value.data));
-    }
-
   }
 
   return aggr_result;
@@ -232,7 +252,6 @@ RC AggrOperator::open()
       LOG_WARN("failed to get current record: %s", strrc(rc));
       return rc;
     }
-    tuple_num_++;
     aggre_value(tuple);
   }
 

@@ -70,6 +70,7 @@ public:
 
   const char *table_name() const { return table_->name(); }
   const char *field_name() const { return field_name_; }
+  const char *aggr_name() const { return aggr_name_; }
   AggrType aggr_type(){ return aggr_type_; }
 
   void set_table(const Table *table)
@@ -84,6 +85,10 @@ public:
   {
     this->field_name_ = field_name;
   }
+   void set_aggr_name(const char *aggr_name)
+  {
+    this->aggr_name_ = aggr_name;
+  }
   const char* aggrr_type_to_string() {
     static const char *AGGR_TYPE_NAME[] = {"max","min","count","avg","sum"};
     return AGGR_TYPE_NAME[aggr_type_];
@@ -92,6 +97,7 @@ private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
   const char *field_name_ = nullptr;
+  const char *aggr_name_ = nullptr;
   AggrType aggr_type_;
 };
 

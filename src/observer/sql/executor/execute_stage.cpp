@@ -290,7 +290,7 @@ void print_aggr_field_header(std::ostream &os, const std::vector<AggrField> &agg
     }
     os << aggr_field.aggrr_type_to_string();
     os << "(";
-    os << aggr_field.field_name();
+    os << aggr_field.aggr_name();
     os << ")";
   }
   os << std::endl;
@@ -571,7 +571,7 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
   std::stringstream ss;
 
   // print header
-  print_aggr_field_header(ss,select_stmt->aggr_fields());
+  print_aggr_field_header(ss, select_stmt->aggr_fields());
 
   auto aggr_results = aggr_oper.aggr_results();
   bool first_field = true;

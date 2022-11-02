@@ -79,6 +79,14 @@ bool PredicateOperator::do_predicate(Tuple *tuple)
       continue;
     }
 
+    // 有空值
+    if(left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
+      if(left_cell.null_compare(right_cell,comp)) {
+        continue;
+      }
+      return false;
+    }
+
     int compare = left_cell.compare(right_cell);
     bool filter_result = false;
     switch (comp) {

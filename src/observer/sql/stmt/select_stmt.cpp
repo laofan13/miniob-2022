@@ -142,7 +142,8 @@ static RC get_aggr_fields(Db *db,const Table *table,
         return RC::SCHEMA_FIELD_MISSING;
       }
       AggrField aggr_field(table,default_field, aggr_type);
-      aggr_field.set_field_name(field_name);
+      aggr_field.set_field_name(default_field->name());
+      aggr_field.set_aggr_name(field_name);
       aggr_fields.push_back(aggr_field);
     }else{
       const FieldMeta *field_meta = table->table_meta().field(field_name);
@@ -152,7 +153,8 @@ static RC get_aggr_fields(Db *db,const Table *table,
       }
 
       AggrField aggr_field(table,field_meta, aggr_type);
-      aggr_field.set_field_name(field_name);
+      aggr_field.set_field_name(field_meta->name());
+      aggr_field.set_aggr_name(field_name);
       aggr_fields.push_back(aggr_field);
     }
   }

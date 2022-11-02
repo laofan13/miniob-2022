@@ -88,11 +88,18 @@ int TupleCell::compare(const TupleCell &other) const
     case FLOATS: return compare_float(this->data_, other.data_);
     case DATES: return compare_int(this->data_, other.data_);
     case CHARS: return compare_string(this->data_, this->length_, other.data_, other.length_);
+    case NULLS: return 0;
     default: {
       LOG_WARN("unsupported type: %d", this->attr_type_);
     }
     }
-  } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
+  }
+
+  if(this->attr_type_ == NULLS || other.attr_type_ == NULLS) {
+    return -1;
+  }
+  
+  if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
     float this_data = *(int *)data_;
     return compare_float(&this_data, other.data_);
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
@@ -143,4 +150,20 @@ int TupleCell::like_match(const TupleCell &other) const
   } 
   LOG_WARN("not supported");
   return -1; // TODO return rc?
+}
+
+
+bool TupleCell::null_compare(const TupleCell &other, CompOp comp) const{
+  switch (comp) {
+    case IS_TO: {
+      return this->attr_type_ == other.attr_type_ ;
+    } break;
+    case IS_NOT: {
+      return !(this->attr_type_ == other.attr_type_);
+    } break;
+    default: {
+      return false;
+    } break;
+  }
+  return false;
 }

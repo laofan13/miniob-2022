@@ -124,9 +124,11 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     right_type = condition.right_value.type;
   }
 
-  if(left_type != right_type && (left_type == DATES || right_type == DATES)) {
-    LOG_WARN("Inconsistent comparison types");
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  if(left_type != NULLS && right_type != NULLS) {
+    if(left_type != right_type && (left_type == DATES || right_type == DATES)) {
+      LOG_WARN("Inconsistent comparison types");
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
   }
 
   filter_unit = new FilterUnit;
