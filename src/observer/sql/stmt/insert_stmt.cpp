@@ -61,44 +61,28 @@ RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
       const AttrType value_type = values[i].type;
       void *data = values[i].data;
 
-      // if(value_type == NULLS && !field_meta->nullable()) { // 值是空类型
-      //   LOG_WARN("field type mismatch. table=%s, field=%s, field is not nullable, value_type=%d", 
-      //           table_name, field_meta->name(),  value_type);
-      //   return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-      // }else{
-      //   continue;
-      // }
-
-      if (field_type != value_type) { // TODO try to convert the value type to field type
-        if (field_type == INTS && value_type == FLOATS) {
-          int val = round(*(float *)data);
-          *(int *)data = val;
-        }else if (field_type == INTS && value_type == CHARS) {
-          int val = std::atoi((char *)(data));
-          *(int *)data = val;
-        }else if (field_type == FLOATS && value_type == INTS) {
-          float val = *(int *)data;
-          *(float *)data = val;
-        }else if (field_type == FLOATS && value_type == CHARS) {
-          float val = std::atof((char *)(data));
-          *(float *)data = val;
-        }else if (field_type == CHARS && value_type == INTS) {
-         std::string s = std::to_string(*(int *)data);
-         char *str = (char *)(data);
-         int i =0;
-         for(;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-         }
-         if(i < 4) {
-           str[i] = '\0';
-         }else{
-           str[4] = '\0';
-         }
-
-        }else if (field_type == CHARS && value_type == FLOATS) {
-          std::ostringstream oss;
-          oss<<*(float *)data;
-          std::string s(oss.str());
+      if(value_type == NULLS) { // 值是空类型
+        if(!field_meta->nullable()) {
+          LOG_WARN("field type mismatch. table=%s, field=%s, field is not nullable, value_type=%d", 
+                table_name, field_meta->name(),  value_type);
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+      }else{
+        if (field_type != value_type) { // TODO try to convert the value type to field type
+          if (field_type == INTS && value_type == FLOATS) {
+            int val = round(*(float *)data);
+            *(int *)data = val;
+          }else if (field_type == INTS && value_type == CHARS) {
+            int val = std::atoi((char *)(data));
+            *(int *)data = val;
+          }else if (field_type == FLOATS && value_type == INTS) {
+            float val = *(int *)data;
+            *(float *)data = val;
+          }else if (field_type == FLOATS && value_type == CHARS) {
+            float val = std::atof((char *)(data));
+            *(float *)data = val;
+          }else if (field_type == CHARS && value_type == INTS) {
+          std::string s = std::to_string(*(int *)data);
           char *str = (char *)(data);
           int i =0;
           for(;i < 4 && i < s.size();i++) {
@@ -109,12 +93,28 @@ RC InsertStmt::create(Db *db, Inserts &inserts, Stmt *&stmt)
           }else{
             str[4] = '\0';
           }
-        }else if(field_type == TEXTS && value_type == CHARS){
-          values[i].type = TEXTS;
-        }else{
-          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-                table_name, field_meta->name(), field_type, value_type);
-          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+
+          }else if (field_type == CHARS && value_type == FLOATS) {
+            std::ostringstream oss;
+            oss<<*(float *)data;
+            std::string s(oss.str());
+            char *str = (char *)(data);
+            int i =0;
+            for(;i < 4 && i < s.size();i++) {
+              str[i] = s[i];
+            }
+            if(i < 4) {
+              str[i] = '\0';
+            }else{
+              str[4] = '\0';
+            }
+          }else if(field_type == TEXTS && value_type == CHARS){
+            values[i].type = TEXTS;
+          }else{
+            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+                  table_name, field_meta->name(), field_type, value_type);
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+          }
         }
       }
     }
