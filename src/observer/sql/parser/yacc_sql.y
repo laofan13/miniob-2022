@@ -431,6 +431,11 @@ update_value:
   		value_init_string(&value, $3);
 		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
 	}
+	|ID EQ NULL_T {
+		Value value;
+  		value_init_null(&value);
+		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
+	} 
 	|ID EQ LBRACE SELECT select_attr FROM ID relation where RBRACE {
 		// CONTEXT->selection.relations[CONTEXT->from_length++]=$4;
 		selects_append_relation(&CONTEXT->selection, $7);

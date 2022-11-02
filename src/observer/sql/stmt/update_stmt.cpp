@@ -76,10 +76,19 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
         update_record.value.type = TEXTS;
         value_type = TEXTS;
       }
-      if (field_type != value_type) { // TODO try to convert the value type to field type
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+
+      if(value_type == NULLS) {
+        if(!field_meta->nullable()) {
+            LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
                   table_name, field_meta->name(), field_type, value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+            return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
+      }else{
+        if (field_type != value_type) { // TODO try to convert the value type to field type
+          LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+                  table_name, field_meta->name(), field_type, value_type);
+          return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+        }
       }
 
       update_fields.push_back(UpdateField(table, field_meta, &update_record.value));

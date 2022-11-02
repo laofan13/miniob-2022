@@ -42,7 +42,7 @@ RC TableMeta::init_sys_fields()
 {
   sys_fields_.reserve(2);
   FieldMeta field_meta;
-  RC rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0, Trx::trx_field_len(), false, false);
+  RC rc = field_meta.init(Trx::trx_field_name(), Trx::trx_field_type(), 0, Trx::trx_field_len(), false, false, 0);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to init trx field. rc = %d:%s", rc, strrc(rc));
     return rc;
@@ -51,7 +51,7 @@ RC TableMeta::init_sys_fields()
 
   // init NULL BITMAP
   FieldMeta null_meta;
-  rc = null_meta.init("null_meta", INTS, 4, 4, false, false);
+  rc = null_meta.init("null_meta", INTS, 4, 4, false, false, 1);
   sys_fields_.push_back(null_meta);
   return rc;
 }
@@ -83,11 +83,12 @@ RC TableMeta::init(const char *name, int field_num, const AttrInfo attributes[])
   }
 
   // 当前实现下，所有类型都是4字节对齐的，所以不再考虑字节对齐问题
+  int normal_field_start_index = sys_field_num();
   int field_offset = sys_fields_.back().offset() + sys_fields_.back().len();
 
   for (int i = 0; i < field_num; i++) {
     const AttrInfo &attr_info = attributes[i];
-    rc = fields_[i + sys_fields_.size()].init(attr_info.name, attr_info.type, field_offset, attr_info.length, true, attr_info.nullable);
+    rc = fields_[i + sys_fields_.size()].init(attr_info.name, attr_info.type, field_offset, attr_info.length, true, attr_info.nullable, normal_field_start_index + i);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name);
       return rc;
