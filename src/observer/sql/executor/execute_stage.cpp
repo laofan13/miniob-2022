@@ -834,6 +834,10 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   return rc;
 }
 
+RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
+  
+}
+
 RC ExecuteStage::do_update_sub_select(UpdateField &update){
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
@@ -844,10 +848,7 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
-  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
-  if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-  }
+  Operator *scan_oper = scan_oper = new TableScanOperator(select_stmt->tables()[0]);
 
   DEFER([&] () {
     delete scan_oper;
@@ -870,27 +871,26 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
 
 
   Tuple * tuple = nullptr;
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
+  if((rc = project_oper.next()) == RC::SUCCESS) {
     tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
   }
 
   if(tuple->cell_num() != 1) {
     return RC::GENERIC_ERROR;
   }
 
-  TupleCell cell;
-  rc = tuple->cell_at(0, cell);
-  if(rc != RC::SUCCESS) {
-    return rc;
-  }
   Value value;
-  value.data = (char *)cell.data();
-  value.type = cell.attr_type();
+  if(tuple != nullptr) {
+    TupleCell cell;
+    rc = tuple->cell_at(0, cell);
+    if(rc != RC::SUCCESS) {
+      return rc;
+    }
+    value.data = (void *)cell.data();
+    value.type = cell.attr_type();
+  }else{
+    value.type = NULLS;
+  }
   update.set_select_value(value);
 
   if (rc != RC::RECORD_EOF) {
