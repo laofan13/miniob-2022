@@ -22,6 +22,7 @@ typedef struct ParserContext {
   Condition conditions[MAX_NUM];
   CompOp comp;
   AggrType aggrOp;
+  int nullable;
   char id[MAX_NUM];
 } ParserContext;
 
@@ -48,6 +49,7 @@ void yyerror(yyscan_t scanner, const char *str)
   context->value_length = 0;
   context->record_length = 0;
   context->ssql->sstr.insertion.record_num = 0;
+  context->nullable = 0;
   printf("parse sql failed. error=%s", str);
 }
 
@@ -118,6 +120,8 @@ ParserContext *get_context(yyscan_t scanner)
 		INNER
 		JOIN
 		UNIQUE
+		NULL_T
+		NULLABLE_T
 
 %union {
   struct _Attr *attr;
@@ -277,10 +281,10 @@ attr_def_list:
     ;
     
 attr_def:
-    ID_get type LBRACE number RBRACE 
+    ID_get type LBRACE number RBRACE nullable
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, $4);
+			attr_info_init(&attribute, CONTEXT->id, $2, $4, CONTEXT->nullable);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -288,10 +292,10 @@ attr_def:
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
 			CONTEXT->value_length++;
 		}
-    |ID_get type
+	|ID_get type nullable
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, 4);
+			attr_info_init(&attribute, CONTEXT->id, $2, 4, CONTEXT->nullable);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -310,7 +314,7 @@ type:
 	| DATE_T { $$=DATES; }
 	| TEXT_T { $$=TEXTS; }
 	;
-	
+
 ID_get:
 	ID 
 	{
@@ -319,7 +323,16 @@ ID_get:
 	}
 	;
 
-	
+nullable:
+	/* empty */
+	| NULLABLE_T {
+		CONTEXT->nullable=1;
+	}
+	| NOT NULL_T {
+		CONTEXT->nullable=0;
+	}
+	;
+
 insert:				/*insert   语句的语法解析树*/
     INSERT INTO ID VALUES record record_list SEMICOLON 
 		{
