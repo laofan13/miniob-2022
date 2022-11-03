@@ -33,6 +33,7 @@ struct IndexAttr{
   AttrType attr_type;
   int32_t  attr_offset;
   int32_t  attr_length;
+  bool nullable;
 };
 
 class AttrComparator
@@ -44,6 +45,7 @@ public:
       index_attrs_[i].attr_length = index_attrs[i].attr_length;
       index_attrs_[i].attr_offset = index_attrs[i].attr_offset;
       index_attrs_[i].attr_type = index_attrs[i].attr_type;
+      index_attrs_[i].nullable = index_attrs[i].nullable;
     }
     attr_num_ = attr_num;
     attr_length_ = length;
@@ -136,6 +138,7 @@ public:
       index_attrs_[i].attr_length = index_attrs[i].attr_length;
       index_attrs_[i].attr_offset = index_attrs[i].attr_offset;
       index_attrs_[i].attr_type = index_attrs[i].attr_type;
+      index_attrs_[i].nullable = index_attrs[i].nullable;
     }
     attr_num_ = attr_num;
     attr_length_ = length;

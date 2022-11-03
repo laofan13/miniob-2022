@@ -38,6 +38,7 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, st
     index_attr[i].attr_length = fields[i].len();
     index_attr[i].attr_offset = fields[i].offset();
     index_attr[i].attr_type = fields[i].type();
+    index_attr[i].nullable = fields[i].nullable();
   }
 
   RC rc = index_handler_.create(file_name, attr_num, index_attr);
@@ -95,7 +96,7 @@ RC BplusTreeIndex::close()
 
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {
-  if(index_meta_.is_unique()) {
+  if(index_meta_.is_unique() ) {
     std::list<RID> rids;
     RC rc = index_handler_.get_entry(record , rids);
     if(rc == SUCCESS && rids.size() != 0) {
