@@ -21,6 +21,7 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
+  SetOp setop;
   AggrType aggrOp;
   int nullable;
   char id[MAX_NUM];
@@ -123,6 +124,8 @@ ParserContext *get_context(yyscan_t scanner)
 		NULL_T
 		NULLABLE_T
 		IS_T
+		IN
+		EXISTS
 
 %union {
   struct _Attr *attr;
@@ -776,8 +779,7 @@ condition:
 			// $$->right_is_attr = 1;		//属性
 			// $$->right_attr.relation_name=$5;
 			// $$->right_attr.attribute_name=$7;
-    }
-    ;
+    };
 
 comOp:
   	  EQ { CONTEXT->comp = EQUAL_TO; }
@@ -790,6 +792,7 @@ comOp:
 	| NOT LIKE { CONTEXT->comp = NOT_LIKE; }
 	| IS_T { CONTEXT->comp = IS_TO; }
 	| IS_T NOT { CONTEXT->comp = IS_NOT; }
+	
     ;
 
 load_data:
