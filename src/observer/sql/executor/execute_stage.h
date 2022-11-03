@@ -53,8 +53,8 @@ protected:
   RC do_select_join(SQLStageEvent *sql_event);
   RC do_insert(SQLStageEvent *sql_event);
 
-  RC do_sub_select_aggregation(UpdateField &update);
-  RC do_sub_select(UpdateField &update);
+  RC do_update_sub_select_aggregation(UpdateField &update);
+  RC do_update_sub_select(UpdateField &update);
   RC do_update(SQLStageEvent *sql_event);
   RC do_delete(SQLStageEvent *sql_event);
   RC do_begin(SQLStageEvent *sql_event);

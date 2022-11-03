@@ -835,7 +835,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   return rc;
 }
 
-RC ExecuteStage::do_sub_select_aggregation(UpdateField &update) {
+RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
 
@@ -927,7 +927,7 @@ RC ExecuteStage::do_sub_select_aggregation(UpdateField &update) {
   return rc;
 }
 
-RC ExecuteStage::do_sub_select(UpdateField &update){
+RC ExecuteStage::do_update_sub_select(UpdateField &update){
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
 
@@ -1066,9 +1066,9 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   for(auto &update: update_stmt->update_fields()) {
     if(update.is_has_subselect()) {
       if(!update.select_stmt()->aggr_fields().empty()) {
-        rc = do_sub_select_aggregation(update);
+        rc = do_update_sub_select_aggregation(update);
       }else{
-        rc = do_sub_select(update);
+        rc = do_update_sub_select(update);
       }
       if(rc != RC::SUCCESS) {
         session_event->set_response("FAILURE\n");
