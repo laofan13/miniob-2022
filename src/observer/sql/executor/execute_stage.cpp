@@ -835,7 +835,7 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   return rc;
 }
 
-RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
+RC ExecuteStage::do_sub_select_aggregation(UpdateField &update) {
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
 
@@ -927,14 +927,9 @@ RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
   return rc;
 }
 
-RC ExecuteStage::do_update_sub_select(UpdateField &update){
+RC ExecuteStage::do_sub_select(UpdateField &update){
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
-
-  // 聚合查询
-  if(!select_stmt->aggr_fields().empty()){
-    return do_update_sub_select_aggregation(update);
-  }
 
   if (select_stmt->tables().size() != 1) {
     LOG_WARN("select more than 1 tables is not supported");
@@ -942,15 +937,10 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
-  Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-
-  DEFER([&] () {
-    delete scan_oper;
-    delete select_stmt;
-  });
+  TableScanOperator scan_oper(select_stmt->tables()[0]);
 
   PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(scan_oper);
+  pred_oper.add_child(&scan_oper);
 
   ProjectOperator project_oper;
   project_oper.add_child(&pred_oper);
@@ -964,6 +954,7 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
     return rc;
   }
 
+  std::stringstream ss;
   TupleCell cell;
   Tuple * tuple = nullptr;
   int num = 0;
@@ -980,6 +971,8 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
       if(rc != RC::SUCCESS) {
         return rc;
       }
+      tuple_to_string(ss, *tuple);
+      ss << std::endl;
     }
     num++;
   }
@@ -989,6 +982,8 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
   }
 
   Value value;
+  int copy_len = cell.length();
+  value.data = new char[copy_len];
   if(cell.attr_type() == NULLS) {
     if(update.meta()->nullable()) {
       value.type = NULLS;
@@ -996,8 +991,8 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
       return RC::GENERIC_ERROR;
     }
   }else {
-    value.data = (void *)cell.data();
     value.type = cell.attr_type();
+    memcpy(value.data, cell.data(),copy_len);
   }
 
   if(value.type != NULLS) {
@@ -1054,18 +1049,14 @@ RC ExecuteStage::do_update_sub_select(UpdateField &update){
   }
 
   update.set_select_value(value);
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
-  } else {
-    rc = project_oper.close();
-  }
+  rc = project_oper.close();
   return rc;
 }
 
 RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   UpdateStmt *update_stmt = (UpdateStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
+  RC rc = RC::SUCCESS;
 
   if (update_stmt == nullptr) {
     LOG_WARN("cannot find statement");
@@ -1074,7 +1065,11 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
 
   for(auto &update: update_stmt->update_fields()) {
     if(update.is_has_subselect()) {
-      RC rc = do_update_sub_select(update);
+      if(!update.select_stmt()->aggr_fields().empty()) {
+        rc = do_sub_select_aggregation(update);
+      }else{
+        rc = do_sub_select(update);
+      }
       if(rc != RC::SUCCESS) {
         session_event->set_response("FAILURE\n");
         return rc;
@@ -1092,7 +1087,7 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   UpdateOperator update_oper(update_stmt);
   update_oper.add_child(&pred_oper);
 
-  RC rc = update_oper.open();
+  rc = update_oper.open();
   if (rc != RC::SUCCESS) {
     session_event->set_response("FAILURE\n");
   } else {
