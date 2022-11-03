@@ -381,7 +381,9 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
   // 复制所有字段的值
   int record_size = table_meta_.record_size();
   char *record = new char[record_size];
+  memset(record,0,record_size);
 
+  static int num = INT_MAX;
   // 空值 bit位图
   int bit_map = 0;
 
@@ -391,6 +393,8 @@ RC Table::make_record(int value_num, const Value *values, char *&record_out)
     size_t copy_len = field->len();
 
     if(value.type == NULLS) {
+      memcpy(record + field->offset(), &num, copy_len);
+      num--;
       bit_map |= 1 << normal_field_start_index + i;
     }else{ //如果为空值，则填充
       if (field->type() == CHARS) {
