@@ -124,8 +124,8 @@ ParserContext *get_context(yyscan_t scanner)
 		NULL_T
 		NULLABLE_T
 		IS_T
-		IN
-		EXISTS
+		IN_T
+		EXISTS_T
 
 %union {
   struct _Attr *attr;
@@ -600,11 +600,15 @@ relation:
 	|COMMA ID rel_list {
 		selects_append_relation(&CONTEXT->selection, $2);
 	}
-	|INNER JOIN ID ON condition join_list {
+	|INNER JOIN ID join_condition join_list {
 		selects_append_relation(&CONTEXT->selection, $3);
-		selects_append_join_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
-		CONTEXT->condition_length = 0;
-	}
+
+		JoinCond *join_cond = &CONTEXT->selection.join_conditions[CONTEXT->selection.join_num++];
+		init_join_condition(join_cond, CONTEXT->conditions, CONTEXT->condition_length);
+
+		CONTEXT->condition_length=0;
+		CONTEXT->value_length = 0;
+	};
 
 rel_list:
     /* empty */
@@ -615,13 +619,22 @@ rel_list:
 
 join_list:
 	/* empty */
-	| INNER JOIN ID ON condition join_list{
+	| INNER JOIN ID join_condition join_list {
 		selects_append_relation(&CONTEXT->selection, $3);
-	}
-	| AND condition join_list {
 
+		JoinCond *join_cond = &CONTEXT->selection.join_conditions[CONTEXT->selection.join_num++];
+		init_join_condition(join_cond, CONTEXT->conditions, CONTEXT->condition_length);
+
+		CONTEXT->condition_length=0;
+		CONTEXT->value_length = 0;
 	}
 	;
+
+join_condition:
+	/* empty */
+	| ON condition condition_list {
+		
+	};
 
 where:
     /* empty */

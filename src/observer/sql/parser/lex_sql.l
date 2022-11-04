@@ -49,8 +49,8 @@ QUOTE            [\'\"]
 [Dd][Rr][Oo][Pp]                                     RETURN_TOKEN(DROP);
 [Tt][Aa][Bb][Ll][Ee]                                 RETURN_TOKEN(TABLE);
 [Tt][Aa][Bb][Ll][Ee][Ss]                             RETURN_TOKEN(TABLES);
-[Ii][Nn]                                             RETURN_TOKEN(IN);
-[Ee][Xx][Ii][Ss][Tt][Ss]                             RETURN_TOKEN(EXISTS);
+[Ii][Nn]                                             RETURN_TOKEN(IN_T);
+[Ee][Xx][Ii][Ss][Tt][Ss]                             RETURN_TOKEN(EXISTS_T);
 [Ii][Nn][Dd][Ee][Xx]                                 RETURN_TOKEN(INDEX);
 [Oo][Nn]                                             RETURN_TOKEN(ON);
 [Ss][Hh][Oo][Ww]                                     RETURN_TOKEN(SHOW);

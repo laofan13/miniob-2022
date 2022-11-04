@@ -50,7 +50,6 @@ typedef enum {
 } CompOp;
 
 typedef enum {
-  UNDEFINED,
   IN_TO,
   NOT_INT,
   EXISTS,
@@ -75,14 +74,6 @@ typedef struct _Value {
   void *data;     // value
 } Value;
 
-typedef struct{
-  int is_value_list;
-  size_t value_num;       // Length of values
-  Value values[MAX_NUM];  // values to insert
-  int is_sub_select;
-  Selects sub_select;
-} SetValue;
-
 typedef struct _Condition {
   int left_is_attr;    // TRUE if left-hand side is an attribute
                        // 1时，操作符左边是属性名，0时，是属性值
@@ -93,10 +84,6 @@ typedef struct _Condition {
                        // 1时，操作符右边是属性名，0时，是属性值
   RelAttr right_attr;  // right-hand side attribute if right_is_attr = TRUE 右边的属性
   Value right_value;   // right-hand side value if right_is_attr = FALSE
-  
-  SetOp setop;
-  int is_set_attr;
-  SetValue set_values;
 } Condition;
 
 typedef enum
@@ -114,6 +101,11 @@ typedef struct {
   AggrType aggr_type;
 } AggrAttr;
 
+typedef struct {
+  size_t condition_num;           // Length of conditions in Where clause
+  Condition conditions[MAX_NUM];  // conditions in Where clause
+}JoinCond;
+
 // struct of select
 typedef struct {
   size_t attr_num;                // Length of attrs in Select clause
@@ -123,7 +115,7 @@ typedef struct {
   size_t relation_num;            // Length of relations in Fro clause
   char *relations[MAX_NUM];       // relations in From clause
   size_t join_num;              // Length of conditions in Where clause
-  Condition join_conditions[MAX_NUM];  // conditions in Where clause
+  JoinCond join_conditions[MAX_NUM];  // conditions in Where clause
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
 } Selects;
@@ -272,8 +264,8 @@ void value_destroy(Value *value);
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value);
 void condition_destroy(Condition *condition);
-void condition_value_append(SetValue *set_value,Value values[], size_t value_num);
-void condition_sub_append(SetValue *set_value,Selects *selects);
+// void condition_value_append(SetValue *set_value,Value values[], size_t value_num);
+// void condition_sub_append(SetValue *set_value,Selects *selects);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable);
 void attr_info_destroy(AttrInfo *attr_info);
@@ -283,8 +275,12 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
-void selects_append_join_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void copy_selects(Selects *selects,Selects *sub_selects);
+
+void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num);
+
+void join_condition_destroy(JoinCond *join_cond);
+
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num);

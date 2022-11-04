@@ -50,7 +50,7 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
   return rc;
 }
 
-RC get_table_and_field(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
+RC FilterStmt::get_table_and_field(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
 		       const RelAttr &attr, Table *&table, const FieldMeta *&field)
 {
   if (common::is_blank(attr.relation_name)) {

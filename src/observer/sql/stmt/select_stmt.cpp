@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/filter_stmt.h"
+#include "sql/stmt/join_stmt.h"
+
 #include "common/log/log.h"
 #include "common/lang/string.h"
 #include "storage/common/db.h"
@@ -215,9 +217,9 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   }
   
 
-  // create filter statement in `where` statement
-  FilterStmt *join_stmt = nullptr;
-  rc = FilterStmt::create(db, default_table, &table_map,
+  // create join statement 
+  JoinStmt *join_stmt = nullptr;
+  rc = JoinStmt::create(db, tables, table_map,
           select_sql.join_conditions, select_sql.join_num, join_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct join stmt");

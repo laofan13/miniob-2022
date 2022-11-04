@@ -106,18 +106,18 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr
   }
 }
 
-void condition_value_append(SetValue *set_value,Value values[], size_t value_num) {
-  set_value->is_value_list = 1;
-  for (size_t i = 0; i < value_num; i++) {
-    set_value->values[i] = values[i];
-  }
-  set_value->value_num = value_num;
-}
+// void condition_value_append(SetValue *set_value,Value values[], size_t value_num) {
+//   set_value->is_value_list = 1;
+//   for (size_t i = 0; i < value_num; i++) {
+//     set_value->values[i] = values[i];
+//   }
+//   set_value->value_num = value_num;
+// }
 
-void condition_sub_append(SetValue *set_value,Selects *selects) {
-  set_value->is_sub_select = 1;
-  copy_selects(selects,&set_value->sub_select);
-}
+// void condition_sub_append(SetValue *set_value,Selects *selects) {
+//   set_value->is_sub_select = 1;
+//   copy_selects(selects,&set_value->sub_select);
+// }
 
 void condition_destroy(Condition *condition)
 {
@@ -130,19 +130,6 @@ void condition_destroy(Condition *condition)
     relation_attr_destroy(&condition->right_attr);
   } else {
     value_destroy(&condition->right_value);
-  }
-
-  if(condition->is_set_attr) {
-    SetValue &set_values = condition->set_values;
-
-    if(set_values.is_sub_select) {
-      for (size_t i = 0; i < set_values.value_num; i++) {
-        value_destroy(&set_values.values[i]);
-      }
-       set_values.value_num = 0;
-    }else if(set_values.is_sub_select){
-      selects_destroy(&set_values.sub_select);
-    }
   }
 }
 
@@ -187,14 +174,6 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
   selects->condition_num = condition_num;
 }
 
-void selects_append_join_conditions(Selects *selects, Condition conditions[], size_t condition_num)
-{
-  assert(condition_num <= sizeof(selects->join_conditions) / sizeof(selects->join_conditions[0]));
-  for (size_t i = 0; i < condition_num; i++) {
-    selects->join_conditions[i] = conditions[i];
-  }
-  selects->join_num = condition_num;
-}
 void copy_selects(Selects *selects, Selects *sub_selects) {
    // copy RelAttr
   for(size_t i = 0;i < selects->attr_num; i++) {
@@ -232,6 +211,20 @@ void copy_selects(Selects *selects, Selects *sub_selects) {
   selects->condition_num = 0;
 }
 
+void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num){
+  for(size_t i = 0; i < condition_num; i++) {
+    join_cond->conditions[i] = conditions[i];
+  }
+  join_cond->condition_num = condition_num;
+}
+
+void join_condition_destroy(JoinCond *join_cond) {
+  for (size_t i = 0; i < join_cond->condition_num; i++) {
+    condition_destroy(&join_cond->conditions[i]);
+  }
+  join_cond->condition_num = 0;
+}
+
 void selects_destroy(Selects *selects)
 {
   // destory RelAttr
@@ -261,7 +254,7 @@ void selects_destroy(Selects *selects)
 
   // destory join_conditions
   for (size_t i = 0; i < selects->join_num; i++) {
-    condition_destroy(&selects->join_conditions[i]);
+    join_condition_destroy(&selects->join_conditions[i]);
   }
   selects->join_num = 0;
 }
