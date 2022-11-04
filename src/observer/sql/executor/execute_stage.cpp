@@ -37,6 +37,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/aggr_operator.h"
 #include "sql/operator/descartes_operator.h"
 #include "sql/operator/join_operator.h"
+#include "sql/operator/table_scan_record_operator.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/select_stmt.h"
 #include "sql/stmt/update_stmt.h"
@@ -555,7 +556,7 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
 
   Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
   if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+    scan_oper = new TableScanRecordOperator(select_stmt->tables()[0]);
   }
 
   DEFER([&] () {delete scan_oper;});
@@ -605,7 +606,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
 
   // 内连接查询
   JoinStmt *join_stmt = select_stmt->join_stmt();
-  if(join_stmt->join_units().empty()){
+  if(!join_stmt->join_units().empty()){
     return do_select_join(sql_event);
   }
 
@@ -620,10 +621,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
     return rc;
   }
 
-  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
-  if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-  }
+  Operator *scan_oper = new TableScanRecordOperator(select_stmt->tables()[0]);
 
   DEFER([&] () {delete scan_oper;});
 

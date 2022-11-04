@@ -76,6 +76,14 @@ class RowTuple : public Tuple
 {
 public:
   RowTuple() = default;
+  RowTuple(const Table *table, const std::vector<FieldMeta> *fields){
+    table_ = table;
+    null_meta_ = table_->table_meta().null_meta();
+    this->speces_.reserve(fields->size());
+    for (const FieldMeta &field : *fields) {
+      speces_.push_back(std::make_shared<TupleCellSpec>(new FieldExpr(table, &field)));
+    }
+  }
   virtual ~RowTuple()
   {
     // for (TupleCellSpec *spec : speces_) {
