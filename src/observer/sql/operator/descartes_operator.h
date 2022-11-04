@@ -52,6 +52,10 @@ public:
     }
     table_records.clear();
 
+    for(Tuple* tuple: composite_table_tuples_) {
+        delete tuple;
+    }
+    composite_table_tuples_.clear();
   }
 
   RC open() override;
@@ -70,5 +74,7 @@ private:
   std::vector<std::pair<int, int>> index_mul_;
   int total_num_;
   int current_index_;
-  CompositeTuple tuple_;
+
+  std::vector<CompositeTuple*> composite_table_tuples_;
+  Tuple *tuple_;
 };

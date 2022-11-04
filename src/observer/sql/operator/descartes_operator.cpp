@@ -40,17 +40,19 @@ RC DescartesOperator::open()
 
 RC DescartesOperator::next()
 {
+  CompositeTuple *composite_tuple = new CompositeTuple();
   if (current_index_ >= total_num_) {
     return RC::RECORD_EOF;
   }
-  tuple_.clear();
   for (int i = 0; i < (int)table_tuples.size(); i++)
   {
     auto &vec_tuples = table_tuples[i];
     int row_index = (current_index_ / index_mul_[i].second) % index_mul_[i].first;
     auto tuple = vec_tuples[row_index];
-    tuple_.add_tuple(tuple);
+    composite_tuple->add_tuple(tuple);
   }
+  composite_table_tuples_.push_back(composite_tuple);
+  tuple_ = composite_tuple;
   current_index_++;
   return RC::SUCCESS;
 }
@@ -68,5 +70,5 @@ RC DescartesOperator::close()
 
 Tuple * DescartesOperator::current_tuple()
 {
-  return &tuple_;
+  return tuple_;
 }

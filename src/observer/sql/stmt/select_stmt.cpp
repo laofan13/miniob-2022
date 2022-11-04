@@ -164,6 +164,30 @@ static RC get_aggr_fields(Db *db,const Table *table,
   return RC::SUCCESS;                          
 }
 
+
+
+// 获取聚合字段
+static RC get_sort_fields(Db *db, Table *default_table, std::unordered_map<std::string, Table *> &table_map, 
+                           size_t order_num, const OrderAttr *order_attributes,
+                           std::vector<SortField> &sort_fields){
+  RC rc = RC::SUCCESS;
+  // 默认字段
+  for (int i = 0; i < order_num; i++) {
+    const OrderAttr &order_attr = order_attributes[i];
+
+    Table *table = nullptr;
+    const FieldMeta *field = nullptr;
+    rc = FilterStmt::get_table_and_field(db, default_table, &table_map, order_attr.rel_attr, table, field);  
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot find attr");
+      return rc;
+    }
+    sort_fields.push_back(SortField(table, field, order_attr.order_type));
+  }
+
+  return rc;                          
+}
+
 RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
 {
   RC rc = RC::SUCCESS;
@@ -200,7 +224,15 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
       return rc;
     }
   }
-  
+
+   // create join statement 
+  JoinStmt *join_stmt = nullptr;
+  rc = JoinStmt::create(db, tables, table_map,
+          select_sql.join_conditions, select_sql.join_num, join_stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("cannot construct join stmt");
+    return rc;
+  }
 
   Table *default_table = nullptr;
   if (tables.size() == 1) {
@@ -216,13 +248,10 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     return rc;
   }
   
-
-  // create join statement 
-  JoinStmt *join_stmt = nullptr;
-  rc = JoinStmt::create(db, tables, table_map,
-          select_sql.join_conditions, select_sql.join_num, join_stmt);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("cannot construct join stmt");
+  // order by statement in `order by` statement
+  std::vector<SortField> sort_fields;
+  rc = get_sort_fields(db, default_table,table_map, select_sql.order_num, select_sql.order_attributes, sort_fields);
+  if(rc != RC::SUCCESS) {
     return rc;
   }
 
@@ -233,6 +262,9 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
   select_stmt->aggr_fields_.swap(aggr_fields);
   select_stmt->filter_stmt_ = filter_stmt;
   select_stmt->join_stmt_ = join_stmt;
+
+  select_stmt->sort_fields_.swap(sort_fields);
+  
   stmt = select_stmt;
   return RC::SUCCESS;
 }

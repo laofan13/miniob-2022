@@ -51,6 +51,10 @@ protected:
   RC do_select_dcartesian(SQLStageEvent *sql_event);
   RC do_select_aggregation(SQLStageEvent *sql_event);
   RC do_select_join(SQLStageEvent *sql_event);
+
+  RC do_select_sort(SQLStageEvent *sql_event);
+  RC do_select_sort_dcartesian(SQLStageEvent *sql_event);
+
   RC do_insert(SQLStageEvent *sql_event);
 
   RC do_update_sub_select_aggregation(UpdateField &update);

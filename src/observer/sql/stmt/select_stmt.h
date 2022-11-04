@@ -24,6 +24,7 @@ class Field;
 class AggrField;
 class FieldMeta;
 class FilterStmt;
+class SortField;
 class JoinStmt;
 class Db;
 class Table;
@@ -43,8 +44,13 @@ public:
   const std::vector<Table *> &tables() const { return tables_; }
   const std::vector<Field> &query_fields() const { return query_fields_; }
   const std::vector<AggrField> &aggr_fields() const { return aggr_fields_; }
+   const std::vector<SortField> &sort_fields() const { return sort_fields_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
   JoinStmt *join_stmt() const { return join_stmt_; }
+
+  bool is_sort() {
+    return !sort_fields_.empty();
+  }
 
 private:
   std::vector<Field> query_fields_;
@@ -52,5 +58,7 @@ private:
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;
   JoinStmt *join_stmt_ = nullptr;
+
+  std::vector<SortField> sort_fields_;
 };
 

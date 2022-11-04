@@ -152,3 +152,30 @@ private:
   SelectStmt *select_stmt_ = nullptr;
   Value select_value_;
 };
+
+
+
+class SortField: public Field
+{
+public:
+  SortField() = default;
+  SortField(const Table *table, const FieldMeta *field, OrderType order_type) :
+  Field(table,field), order_type_(order_type)
+  {}
+
+  ~SortField () = default;
+
+
+  void set_order_type(OrderType order_type)
+  {
+    this->order_type_ = order_type;
+  }
+
+  OrderType order_type() const
+  {
+    return order_type_;
+  }
+
+private:
+  OrderType order_type_;
+};
