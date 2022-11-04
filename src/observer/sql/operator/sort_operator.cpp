@@ -45,9 +45,9 @@ RC SortOperator::open()
         if(cell1.attr_type() == NULLS && cell2.attr_type() == NULLS) {// 有空值
           ret = 0;
         }else if(cell1.attr_type() == NULLS && cell2.attr_type() != NULLS){
-          ret = -1;
-        }else if(cell1.attr_type() != NULLS && cell2.attr_type() == NULLS){
           ret = 1;
+        }else if(cell1.attr_type() != NULLS && cell2.attr_type() == NULLS){
+          ret = -1;
         }else{
           ret = cell2.compare(cell1);
         }
@@ -55,9 +55,9 @@ RC SortOperator::open()
         if(cell1.attr_type() == NULLS && cell2.attr_type() == NULLS) {// 有空值
           ret = 0;
         }else if(cell1.attr_type() == NULLS && cell2.attr_type() != NULLS){
-          ret = 1;
-        }else if(cell1.attr_type() != NULLS && cell2.attr_type() == NULLS){
           ret = -1;
+        }else if(cell1.attr_type() != NULLS && cell2.attr_type() == NULLS){
+          ret = 1;
         }else{
           ret = cell1.compare(cell2);
         }
