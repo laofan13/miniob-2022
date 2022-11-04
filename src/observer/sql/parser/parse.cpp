@@ -174,6 +174,10 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
   selects->condition_num = condition_num;
 }
 
+void selects_append_order_by(Selects *selects, OrderAttr *order_attr) {
+  selects->order_attributes[selects->order_num++] = *order_attr;
+}
+
 void copy_selects(Selects *selects, Selects *sub_selects) {
    // copy RelAttr
   for(size_t i = 0;i < selects->attr_num; i++) {
@@ -209,6 +213,14 @@ void copy_selects(Selects *selects, Selects *sub_selects) {
   }
   sub_selects->condition_num = selects->condition_num;
   selects->condition_num = 0;
+
+  // copy conditions
+  for(size_t i = 0;i < selects->order_num; i++) {
+    sub_selects->order_attributes[i] = selects->order_attributes[i];
+  }
+  sub_selects->order_num = selects->order_num;
+  selects->order_num = 0;
+
 }
 
 void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num){
@@ -257,6 +269,12 @@ void selects_destroy(Selects *selects)
     join_condition_destroy(&selects->join_conditions[i]);
   }
   selects->join_num = 0;
+
+  // destory order relations
+  for (size_t i = 0; i < selects->order_num; i++) {
+    relation_attr_destroy(&selects->order_attributes[i].rel_attr);
+  }
+  selects->order_num = 0;
 }
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num)

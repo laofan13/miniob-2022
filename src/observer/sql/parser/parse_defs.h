@@ -106,6 +106,18 @@ typedef struct {
   Condition conditions[MAX_NUM];  // conditions in Where clause
 }JoinCond;
 
+typedef enum
+{
+  ORDER_ASC,
+  ORDER_DESC
+} OrderType;
+
+//排序属性结构
+typedef struct {
+  RelAttr rel_attr;
+  OrderType order_type;
+} OrderAttr;
+
 // struct of select
 typedef struct {
   size_t attr_num;                // Length of attrs in Select clause
@@ -118,6 +130,8 @@ typedef struct {
   JoinCond join_conditions[MAX_NUM];  // conditions in Where clause
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
+  size_t order_num;               // order by
+  OrderAttr order_attributes[MAX_NUM];
 } Selects;
 
 // struct of InsertRecord
@@ -278,8 +292,9 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
 void copy_selects(Selects *selects,Selects *sub_selects);
 
 void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num);
-
 void join_condition_destroy(JoinCond *join_cond);
+
+void selects_append_order_by(Selects *selects, OrderAttr *order_attr);
 
 void selects_destroy(Selects *selects);
 
