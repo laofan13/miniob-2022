@@ -449,52 +449,72 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
 
 RC ExecuteStage::do_select_join(SQLStageEvent *sql_event) {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  JoinStmt *join_stmt = select_stmt->join_stmt();
+ 
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
   std::vector<Operator *> scan_opers;
   for (auto table : select_stmt->tables()) {
-    scan_opers.push_back(new TableScanOperator(table));
+    scan_opers.push_back(new TableScanRecordOperator(table));
   }
   
+  std::vector<JoinOperator *> join_opers;
+  JoinStmt *join_stmt = select_stmt->join_stmt();
+  auto &join_units = join_stmt->join_units();
 
-  // PredicateOperator pred_oper(select_stmt->filter_stmt());
-  // pred_oper.add_child(&join_oper);
+  assert(join_units.size() < scan_opers.size());
 
-  // ProjectOperator project_oper;
-  // project_oper.add_child(&pred_oper);
+  JoinOperator *join_oper = nullptr;
+  for(int i =0;i < join_units.size();i++) {
+    if(nullptr == join_oper) {
+      join_oper = new JoinOperator(scan_opers[i],scan_opers[i+1],join_units[i]);
+    }else{
+      join_oper = new JoinOperator(join_oper,scan_opers[i+1],join_units[i]);
+    }
+    join_opers.push_back(join_oper);
+  }
 
-  // for (const Field &field : select_stmt->query_fields()) {
-  //   project_oper.add_projection(field.table(), field.meta());
-  // }
-  // rc = project_oper.open();
-  // if (rc != RC::SUCCESS) {
-  //   LOG_WARN("failed to open operator");
-  //   return rc;
-  // }
+  PredicateOperator pred_oper(select_stmt->filter_stmt());
+  pred_oper.add_child(join_oper);
+  ProjectOperator project_oper;
+  project_oper.add_child(&pred_oper);
+  for (const Field &field : select_stmt->query_fields()) {
+    project_oper.add_projection(field.table(), field.meta());
+  }
+  rc = project_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
 
-  // std::stringstream ss;
-  // print_tuple_header_with_table(ss, project_oper);
-  // while ((rc = project_oper.next()) == RC::SUCCESS) {
-  //   // get current record
-  //   // write to response
-  //   Tuple * tuple = project_oper.current_tuple();
-  //   if (nullptr == tuple) {
-  //     rc = RC::INTERNAL;
-  //     LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-  //     break;
-  //   }
-  //   tuple_to_string(ss, *tuple);
-  //   ss << std::endl;
-  // }
-  // if (rc != RC::RECORD_EOF) {
-  //   LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-  //   project_oper.close();
-  // } else {
-  //   rc = project_oper.close();
-  // }
-  // session_event->set_response(ss.str());
+  std::stringstream ss;
+  print_tuple_header_with_table(ss, project_oper);
+  while ((rc = project_oper.next()) == RC::SUCCESS) {
+    // get current record
+    // write to response
+    Tuple * tuple = project_oper.current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+    tuple_to_string(ss, *tuple);
+    ss << std::endl;
+  }
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    project_oper.close();
+  } else {
+    rc = project_oper.close();
+  }
+  session_event->set_response(ss.str());
+
+  for(Operator * scan_oper: scan_opers) {
+    delete scan_oper;
+  }
+  for(Operator * join_oper: join_opers) {
+    delete join_oper;
+  }
 
   return rc;
 }

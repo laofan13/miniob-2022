@@ -26,9 +26,17 @@ class JoinOperator : public Operator
 public:
   JoinOperator(Operator *left, Operator *right, JoinUnit *join_unit):
   left_(left), right_(right), join_unit_(join_unit)
-  {}
+  {
+    total_num_ = 0;
+    current_index_ = 0;
+  }
 
-  virtual ~JoinOperator() = default;
+  ~JoinOperator(){
+    for(Tuple* tuple: composite_table_tuples_) {
+        delete tuple;
+    }
+    composite_table_tuples_.clear();
+  }
 
   RC open() override;
   RC next() override;
@@ -45,4 +53,12 @@ private:
   Operator *right_ = nullptr;
   bool round_done_ = true;
   JoinUnit *join_unit_ = nullptr;
+
+  std::vector<Tuple*> left_table_tuples;
+  std::vector<Tuple*> right_table_tuples;
+  int total_num_;
+  int current_index_;
+  
+  std::vector<CompositeTuple*> composite_table_tuples_;
+  Tuple *tuple_;
 };
