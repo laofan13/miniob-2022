@@ -474,9 +474,13 @@ RC RecordFileHandler::insert_text_data(const char *data, PageNum *page_num) {
     return ret;
   }
   *page_num = frame->page_num();
-
-  memset(frame->data(), 0, TEXTPATCHSIZE);
-  memcpy(frame->data() + TEXTPATCHSIZE, data, TEXTPAGESIZE - TEXTPATCHSIZE);
+  char *page_data = frame->data();
+  memset(page_data, 0, TEXTPATCHSIZE);
+  int copy_len = strlen(data);
+  if(copy_len > TEXTPAGESIZE - TEXTPATCHSIZE) {
+    copy_len = TEXTPAGESIZE - TEXTPATCHSIZE;
+  }
+  memcpy(page_data + TEXTPATCHSIZE, data, copy_len);
   frame->mark_dirty();
   if (ret != RC::SUCCESS) {
     LOG_ERROR("Failed to mark page dirty. ret=%s", strrc(ret));
