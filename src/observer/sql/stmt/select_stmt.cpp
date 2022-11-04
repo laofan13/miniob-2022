@@ -225,15 +225,6 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
     }
   }
 
-   // create join statement 
-  JoinStmt *join_stmt = nullptr;
-  rc = JoinStmt::create(db, tables, table_map,
-          select_sql.join_conditions, select_sql.join_num, join_stmt);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("cannot construct join stmt");
-    return rc;
-  }
-
   Table *default_table = nullptr;
   if (tables.size() == 1) {
     default_table = tables[0];
@@ -245,6 +236,15 @@ RC SelectStmt::create(Db *db, const Selects &select_sql, Stmt *&stmt)
           select_sql.conditions, select_sql.condition_num, filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");
+    return rc;
+  }
+
+   // create join statement 
+  JoinStmt *join_stmt = nullptr;
+  rc = JoinStmt::create(db, tables, table_map,
+          select_sql.join_conditions, select_sql.join_num, join_stmt);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("cannot construct join stmt");
     return rc;
   }
   

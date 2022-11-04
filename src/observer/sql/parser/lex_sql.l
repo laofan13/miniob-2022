@@ -82,6 +82,7 @@ QUOTE            [\'\"]
 [Aa][Ss][Cc]                                         RETURN_TOKEN(ASC);
 
 [Ii][Nn][Nn][Ee][Rr]                                 RETURN_TOKEN(INNER);
+[Jj][Oo][Ii][Nn]                                     RETURN_TOKEN(JOIN);
 
 [Mm][Aa][Xx]                                         RETURN_TOKEN(MAX);
 [Mm][Ii][Nn]                                         RETURN_TOKEN(MIN);

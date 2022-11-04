@@ -49,7 +49,7 @@ public:
   JoinStmt *join_stmt() const { return join_stmt_; }
 
   bool is_sort() {
-    return !sort_fields_.empty();
+    return sort_fields_.size() > 1;
   }
 
 private:

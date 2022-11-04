@@ -2567,7 +2567,7 @@ yyreduce:
 
   case 127:
 #line 809 "yacc_sql.y"
-                                               {
+                                              {
 
 	}
 #line 2574 "yacc_sql.tab.c"
