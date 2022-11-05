@@ -24,6 +24,7 @@ enum class ExprType {
   NONE,
   FIELD,
   VALUE,
+  FUNC,
 };
 
 class Expression
@@ -102,4 +103,54 @@ public:
 
 private:
   TupleCell tuple_cell_;
+};
+
+
+class FuncFieldExpr : public FieldExpr
+{
+public:
+  FuncFieldExpr() = default;
+  FuncFieldExpr(const Table *table, const FieldMeta *field, FuncType func_type)
+  : FieldExpr(table, field),func_type_(func_type)
+  {}
+
+  virtual ~FuncFieldExpr() = default;
+
+  ExprType type() const override
+  {
+    return ExprType::FUNC;
+  }
+
+  const FuncType func_type() const
+  {
+    return func_type_;
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell & cell) const override;
+
+private:
+  FuncType func_type_;
+};
+
+
+class FuncValueExpr : public ValueExpr
+{
+public:
+  FuncValueExpr() = default;
+  FuncValueExpr(const Value &value, FuncType func_type) 
+  :ValueExpr(value),func_type_(func_type)
+  {
+
+  }
+
+  virtual ~FuncValueExpr() = default;
+
+  ExprType type() const override
+  {
+    return ExprType::FUNC;
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell & cell) const override;
+private:
+  FuncType func_type_;
 };

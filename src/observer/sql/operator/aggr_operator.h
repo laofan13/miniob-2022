@@ -42,19 +42,6 @@ public:
   }
   //int tuple_cell_num() const override
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override
-  void init_aggregation_value();
-  void aggre_value(Tuple *tuple);
-
-  std::vector<Value> &aggregation_values() {
-    return aggregation_values_;
-  }
-
-  std::vector<TupleCell> aggr_results();
-
-  size_t tuple_num() {
-    return tuple_num_;
-  }
-
 private:
   SelectStmt *select_stmt_ = nullptr;
   std::vector<Value> aggregation_values_;

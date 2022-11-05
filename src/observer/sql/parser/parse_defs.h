@@ -29,12 +29,6 @@ See the Mulan PSL v2 for more details. */
 #define TEXTSIZE (PAGENUMSIZE+TEXTPATCHSIZE)
 #define TEXTPAGESIZE 4096
 
-//属性结构体
-typedef struct {
-  char *relation_name;   // relation name (may be NULL) 表名
-  char *attribute_name;  // attribute name              属性名
-} RelAttr;
-
 typedef enum {
   EQUAL_TO,     //"="     0
   LESS_EQUAL,   //"<="    1
@@ -68,11 +62,46 @@ typedef enum
   NULLS
 } AttrType;
 
+typedef enum
+{
+  NO_FUNC,
+  MAX_FUNC,
+  MIN_FUNC,
+  COUNT_FUNC,
+  AVG_FUNC,
+  SUM_FUNC,
+  LENGTH_FUNC,
+  ROUND_FUNC,
+  DATE_FORMAT_FUNC
+} FuncType;
+
+typedef enum
+{
+  ORDER_ASC,
+  ORDER_DESC
+} OrderType;
+
+//属性结构体
+typedef struct {
+  char *relation_name;   // relation name (may be NULL) 表名
+  char *attribute_name;  // attribute name              属性名
+} RelAttr;
+
 //属性值
 typedef struct _Value {
   AttrType type;  // type of value
   void *data;     // value
 } Value;
+
+//查询类型
+typedef struct {
+  int is_attr;
+  RelAttr rel_attr;
+  int is_value;
+  Value value;
+  int is_func;
+  FuncType func_type;
+}QueryAttr;
 
 typedef struct _Condition {
   int left_is_attr;    // TRUE if left-hand side is an attribute
@@ -86,31 +115,10 @@ typedef struct _Condition {
   Value right_value;   // right-hand side value if right_is_attr = FALSE
 } Condition;
 
-typedef enum
-{
-  MAX_FUNC,
-  MIN_FUNC,
-  COUNT_FUNC,
-  AVG_FUNC,
-  SUM_FUNC
-} AggrType;
-
-//属性结构体
-typedef struct {
-  RelAttr rel_attr;
-  AggrType aggr_type;
-} AggrAttr;
-
 typedef struct {
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
 }JoinCond;
-
-typedef enum
-{
-  ORDER_ASC,
-  ORDER_DESC
-} OrderType;
 
 //排序属性结构
 typedef struct {
@@ -120,18 +128,23 @@ typedef struct {
 
 // struct of select
 typedef struct {
-  size_t attr_num;                // Length of attrs in Select clause
-  RelAttr attributes[MAX_NUM];    // attrs in Select clause
-  size_t aggr_num;                
-  AggrAttr aggr_attrs[MAX_NUM];  
+  size_t query_num;                
+  QueryAttr query_attrs[MAX_NUM];  
+
   size_t relation_num;            // Length of relations in Fro clause
   char *relations[MAX_NUM];       // relations in From clause
+
   size_t join_num;              // Length of conditions in Where clause
   JoinCond join_conditions[MAX_NUM];  // conditions in Where clause
+
   size_t condition_num;           // Length of conditions in Where clause
   Condition conditions[MAX_NUM];  // conditions in Where clause
+
   size_t order_num;               // order by
   OrderAttr order_attributes[MAX_NUM];
+
+  size_t group_num;               // group by
+  RelAttr group_attrs[MAX_NUM];
 } Selects;
 
 // struct of InsertRecord
@@ -278,24 +291,24 @@ void value_destroy(Value *value);
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value);
 void condition_destroy(Condition *condition);
-// void condition_value_append(SetValue *set_value,Value values[], size_t value_num);
-// void condition_sub_append(SetValue *set_value,Selects *selects);
-
-void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable);
-void attr_info_destroy(AttrInfo *attr_info);
-
-void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
-void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr);
-void selects_append_relation(Selects *selects, const char *relation_name);
-void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
-void copy_selects(Selects *selects,Selects *sub_selects);
 
 void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num);
 void join_condition_destroy(JoinCond *join_cond);
 
-void selects_append_order_by(Selects *selects, OrderAttr *order_attr);
+void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable);
+void attr_info_destroy(AttrInfo *attr_info);
 
+void query_attr_int(QueryAttr *query_attr, int is_attr, RelAttr* rel_attr,
+  int is_value, Value *value,int is_func, FuncType func_type);
+void query_attr_destroy(QueryAttr *query);
+
+void selects_init(Selects *selects, ...);
+void selects_append_attribute(Selects *selects, QueryAttr *query_attr);
+void selects_append_relation(Selects *selects, const char *relation_name);
+void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void selects_append_join_conditions(Selects *selects, JoinCond *join_cond);
+void selects_append_order_by(Selects *selects, OrderAttr *order_attr);
+void selects_append_group_by(Selects *selects, RelAttr *rel_attr);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num);

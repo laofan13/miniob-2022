@@ -32,6 +32,14 @@ public:
   }
 
   ~JoinOperator(){
+    if(left_) {
+      delete left_;
+      left_ = nullptr;
+    }
+    if(right_) {
+      delete right_;
+      right_ = nullptr;
+    }
     for(Tuple* tuple: composite_table_tuples_) {
         delete tuple;
     }

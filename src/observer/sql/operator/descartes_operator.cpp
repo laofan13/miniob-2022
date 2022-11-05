@@ -11,25 +11,20 @@ RC DescartesOperator::open()
   {
     auto &scan_oper = *it;
     std::vector<Tuple *> vec_tuples;
-    std::vector<Record *> vec_records;
     RC rc = scan_oper->open();
     if (rc == RC::SUCCESS) {
       while (scan_oper->next() == RC::SUCCESS) {
         auto tuple = static_cast<RowTuple*>(scan_oper->current_tuple());
-
-        Record *record = new Record(tuple->record());
-        RowTuple *row_tuple = new RowTuple(*tuple);
-        row_tuple->set_record(record);
-
-        vec_records.push_back(record);
-        vec_tuples.push_back(row_tuple);
+        if (nullptr == tuple) {
+          LOG_WARN("failed to get current record: %s", strrc(rc));
+          return RC::INTERNAL;
+        }
+        vec_tuples.push_back(tuple);
       }
    
       index_mul_.push_back({vec_tuples.size(), total_num_});
       total_num_ *= vec_tuples.size();
-
       table_tuples.push_back(vec_tuples);
-      table_records.push_back(vec_records);
     } else {
       return rc;
     }

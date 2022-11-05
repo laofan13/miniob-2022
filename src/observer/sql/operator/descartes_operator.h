@@ -23,7 +23,7 @@ class FilterStmt;
 class DescartesOperator : public Operator
 {
 public:
-  DescartesOperator(std::vector<TableScanOperator*> scan_opers)
+  DescartesOperator(std::vector<Operator*> scan_opers)
   :scan_opers_(scan_opers)
   {
     total_num_ = 1;
@@ -35,22 +35,6 @@ public:
       delete scan_oper;
     }
     scan_opers_.clear();
-
-    for (auto &vec_tuples: table_tuples) {
-      for (auto tuple: vec_tuples) {
-        delete tuple;
-      }
-      vec_tuples.clear();
-    }
-    table_tuples.clear();
-
-    for (auto &vec_records: table_records) {
-      for (auto record: vec_records) {
-        delete record;
-      }
-      vec_records.clear();
-    }
-    table_records.clear();
 
     for(Tuple* tuple: composite_table_tuples_) {
         delete tuple;
@@ -68,8 +52,7 @@ public:
 private:
   
 private:
-  std::vector<TableScanOperator*> scan_opers_;
-  std::vector<std::vector<Record*> > table_records;
+  std::vector<Operator*> scan_opers_;
   std::vector<std::vector<Tuple*> > table_tuples;
   std::vector<std::pair<int, int>> index_mul_;
   int total_num_;

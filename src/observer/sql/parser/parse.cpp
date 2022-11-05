@@ -106,19 +106,6 @@ void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr
   }
 }
 
-// void condition_value_append(SetValue *set_value,Value values[], size_t value_num) {
-//   set_value->is_value_list = 1;
-//   for (size_t i = 0; i < value_num; i++) {
-//     set_value->values[i] = values[i];
-//   }
-//   set_value->value_num = value_num;
-// }
-
-// void condition_sub_append(SetValue *set_value,Selects *selects) {
-//   set_value->is_sub_select = 1;
-//   copy_selects(selects,&set_value->sub_select);
-// }
-
 void condition_destroy(Condition *condition)
 {
   if (condition->left_is_attr) {
@@ -131,6 +118,20 @@ void condition_destroy(Condition *condition)
   } else {
     value_destroy(&condition->right_value);
   }
+}
+
+void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num){
+  for(size_t i = 0; i < condition_num; i++) {
+    join_cond->conditions[i] = conditions[i];
+  }
+  join_cond->condition_num = condition_num;
+}
+
+void join_condition_destroy(JoinCond *join_cond) {
+  for (size_t i = 0; i < join_cond->condition_num; i++) {
+    condition_destroy(&join_cond->conditions[i]);
+  }
+  join_cond->condition_num = 0;
 }
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable)
@@ -151,105 +152,69 @@ void attr_info_destroy(AttrInfo *attr_info)
   attr_info->name = nullptr;
 }
 
-void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, RelAttr *rel_attr)
-{
-  selects->attributes[selects->attr_num++] = *rel_attr;
+void query_attr_int(QueryAttr *query_attr, int is_attr, RelAttr* rel_attr,
+  int is_value, Value *value,int is_func, FuncType func_type){
+  query_attr->is_attr = is_attr;
+  if(is_attr) {
+    query_attr->rel_attr = *rel_attr;
+  }
+  query_attr->is_value = is_value;
+  if(is_value) {
+    query_attr->value = *value;
+  }
+  query_attr->is_func = is_func;
+  if(is_func) {
+    query_attr->func_type = func_type;
+  }
 }
-void selects_append_aggregation(Selects *selects, AggrAttr *aggr_attr)
+void query_attr_destroy(QueryAttr *query_attr){
+  if(query_attr->is_attr) {
+    relation_attr_destroy(&query_attr->rel_attr);
+  }
+  if(query_attr->is_value) {
+    value_destroy(&query_attr->value);
+  }
+  if(query_attr->is_func) {
+    query_attr->func_type = NO_FUNC;
+  }
+}
+
+void selects_init(Selects *selects, ...);
+void selects_append_attribute(Selects *selects, QueryAttr *query_attr)
 {
-  selects->aggr_attrs[selects->aggr_num++] = *aggr_attr;
+  selects->query_attrs[selects->query_num++] = *query_attr;
 }
 void selects_append_relation(Selects *selects, const char *relation_name)
 {
   selects->relations[selects->relation_num++] = strdup(relation_name);
 }
-
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num)
 {
-  assert(condition_num <= sizeof(selects->conditions) / sizeof(selects->conditions[0]));
-  for (size_t i = 0; i < condition_num; i++) {
+  for(size_t i = 0; i < condition_num; i++) {
     selects->conditions[i] = conditions[i];
   }
   selects->condition_num = condition_num;
 }
-
+void selects_append_join_conditions(Selects *selects, JoinCond *append_join_cond){
+  JoinCond &join_cond = selects->join_conditions[selects->join_num++];
+  for (size_t i = 0; i < append_join_cond->condition_num; i++) {
+    join_cond.conditions[i] = append_join_cond->conditions[i];
+  }
+  join_cond.condition_num = append_join_cond->condition_num;
+}
 void selects_append_order_by(Selects *selects, OrderAttr *order_attr) {
   selects->order_attributes[selects->order_num++] = *order_attr;
 }
-
-void copy_selects(Selects *selects, Selects *sub_selects) {
-   // copy RelAttr
-  for(size_t i = 0;i < selects->attr_num; i++) {
-    sub_selects->attributes[i] = selects->attributes[i];
-  }
-  sub_selects->attr_num = selects->attr_num;
-  selects->attr_num = 0;
-
-  // copy AggrAttr
-  for(size_t i = 0;i < selects->aggr_num; i++) {
-    sub_selects->aggr_attrs[i] = selects->aggr_attrs[i];
-  }
-  sub_selects->aggr_num = selects->aggr_num;
-  selects->aggr_num = 0;
-
-  // copy relations
-  for(size_t i = 0;i < selects->relation_num; i++) {
-    sub_selects->relations[i] = selects->relations[i];
-  }
-  sub_selects->relation_num = selects->relation_num;
-  selects->relation_num = 0;
-
-  // copy join_conditions
-  for(size_t i = 0;i < selects->join_num; i++) {
-    sub_selects->join_conditions[i] = selects->join_conditions[i];
-  }
-  sub_selects->join_num = selects->join_num;
-  selects->join_num = 0;
-
-  // copy conditions
-  for(size_t i = 0;i < selects->condition_num; i++) {
-    sub_selects->conditions[i] = selects->conditions[i];
-  }
-  sub_selects->condition_num = selects->condition_num;
-  selects->condition_num = 0;
-
-  // copy conditions
-  for(size_t i = 0;i < selects->order_num; i++) {
-    sub_selects->order_attributes[i] = selects->order_attributes[i];
-  }
-  sub_selects->order_num = selects->order_num;
-  selects->order_num = 0;
-
+void selects_append_group_by(Selects *selects, RelAttr *rel_attr) {
+  selects->group_attrs[selects->group_num++] = *rel_attr;
 }
-
-void init_join_condition(JoinCond *join_cond, Condition conditions[], size_t condition_num){
-  for(size_t i = 0; i < condition_num; i++) {
-    join_cond->conditions[i] = conditions[i];
-  }
-  join_cond->condition_num = condition_num;
-}
-
-void join_condition_destroy(JoinCond *join_cond) {
-  for (size_t i = 0; i < join_cond->condition_num; i++) {
-    condition_destroy(&join_cond->conditions[i]);
-  }
-  join_cond->condition_num = 0;
-}
-
 void selects_destroy(Selects *selects)
 {
   // destory RelAttr
-  for (size_t i = 0; i < selects->attr_num; i++) {
-    relation_attr_destroy(&selects->attributes[i]);
+  for (size_t i = 0; i < selects->query_num; i++) {
+    query_attr_destroy(&selects->query_attrs[i]);
   }
-  selects->attr_num = 0;
-
-  // destory AggrAttr
-  for (size_t i = 0; i < selects->aggr_num; i++) {
-    relation_attr_destroy(&selects->aggr_attrs[i].rel_attr);
-  }
-  selects->aggr_num = 0;
+  selects->query_num = 0;
 
   // destory relations
   for (size_t i = 0; i < selects->relation_num; i++) {
@@ -275,6 +240,12 @@ void selects_destroy(Selects *selects)
     relation_attr_destroy(&selects->order_attributes[i].rel_attr);
   }
   selects->order_num = 0;
+
+  // destory order relations
+  for (size_t i = 0; i < selects->group_num; i++) {
+    relation_attr_destroy(&selects->group_attrs[i]);
+  }
+  selects->group_num = 0;
 }
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num)
@@ -358,7 +329,6 @@ void updates_select_append(Updates *updates, const char *attribute_name, Selects
   update_record.attribute_name = strdup(attribute_name);
 
   update_record.is_sub_select = 1;
-  copy_selects(selects,&update_record.sub_select);
 }
 
 void updates_destroy(Updates *updates)

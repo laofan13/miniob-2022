@@ -29,7 +29,12 @@ public:
     : filter_stmt_(filter_stmt)
   {}
 
-  virtual ~PredicateOperator() = default;
+  virtual ~PredicateOperator() {
+    if(children_[0]) {
+      delete children_[0];
+      children_[0] = nullptr;
+    }
+  }
 
   RC open() override;
   RC next() override;

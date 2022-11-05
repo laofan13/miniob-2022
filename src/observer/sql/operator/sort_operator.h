@@ -29,7 +29,12 @@ public:
     sort_fields_ = sort_fields;
   }
 
-  virtual ~SortOperator() = default;
+  virtual ~SortOperator() {
+    if(children_[0]) {
+      delete children_[0];
+      children_[0] = nullptr;
+    }
+  }
 
   RC open() override;
   RC next() override;

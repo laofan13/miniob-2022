@@ -25,3 +25,76 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell) const
   cell = tuple_cell_;
   return RC::SUCCESS;
 }
+
+RC FuncFieldExpr::get_value(const Tuple &tuple, TupleCell & cell) const
+{
+  RC rc = tuple.find_cell(field(), cell);
+  switch (func_type_)
+  {
+  case MAX_FUNC: {
+
+  }break;
+  case MIN_FUNC: {
+
+  }break;
+  case COUNT_FUNC: {
+
+  }break;
+  case AVG_FUNC: {
+
+  }break;
+  case SUM_FUNC: {
+
+  }break;
+  case LENGTH_FUNC: {
+
+  }break;
+  case ROUND_FUNC: {
+
+  }break;
+  case DATE_FORMAT_FUNC: {
+
+  }break;
+  default:
+    break;
+  }
+
+  return RC::SUCCESS;
+}
+
+RC FuncValueExpr::get_value(const Tuple &tuple, TupleCell & cell) const
+{
+  get_tuple_cell(cell);
+
+  switch (func_type_)
+  {
+  case MAX_FUNC: {
+
+  }break;
+  case MIN_FUNC: {
+
+  }break;
+  case COUNT_FUNC: {
+
+  }break;
+  case AVG_FUNC: {
+
+  }break;
+  case SUM_FUNC: {
+
+  }break;
+  case LENGTH_FUNC: {
+
+  }break;
+  case ROUND_FUNC: {
+
+  }break;
+  case DATE_FORMAT_FUNC: {
+
+  }break;
+  default:
+    break;
+  }
+
+  return RC::SUCCESS;
+}

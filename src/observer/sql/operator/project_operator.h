@@ -23,7 +23,12 @@ public:
   ProjectOperator()
   {}
 
-  virtual ~ProjectOperator() = default;
+  virtual ~ProjectOperator(){
+    if(children_[0]) {
+      delete children_[0];
+      children_[0] = nullptr;
+    }
+  }
 
   void add_projection(const Table *table, const FieldMeta *field);
 

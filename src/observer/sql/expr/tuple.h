@@ -163,14 +163,14 @@ public:
     return RC::NOTFOUND;
   }
 
-  RC find_cell(const AggrField &aggr_field, TupleCell &cell)
+  RC find_cell(const QueryField &field, TupleCell &cell)
   {
-    const char *table_name = aggr_field.table_name();
+    const char *table_name = field.table_name();
     if (0 != strcmp(table_name, table_->name())) {
       return RC::NOTFOUND;
     }
 
-    const char *field_name = aggr_field.field_name();
+    const char *field_name = field.field_name();
     for (size_t i = 0; i < speces_.size(); ++i) {
       const FieldExpr * field_expr = (const FieldExpr *)speces_[i]->expression();
       const Field &field = field_expr->field();

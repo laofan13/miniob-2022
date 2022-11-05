@@ -23,6 +23,7 @@ class SQLStageEvent;
 class SessionEvent;
 class SelectStmt;
 class UpdateField;
+class Operator;
 
 class ExecuteStage : public common::Stage {
 public:
@@ -47,16 +48,12 @@ protected:
   RC do_show_index(SQLStageEvent *sql_event);
   RC do_show_tables(SQLStageEvent *sql_event);
   RC do_desc_table(SQLStageEvent *sql_event);
-  RC do_select(SQLStageEvent *sql_event);
-  RC do_select_dcartesian(SQLStageEvent *sql_event);
-  RC do_select_aggregation(SQLStageEvent *sql_event);
-  RC do_select_join(SQLStageEvent *sql_event);
 
-  RC do_select_sort(SQLStageEvent *sql_event);
-  RC do_select_sort_dcartesian(SQLStageEvent *sql_event);
+  RC do_select_create_child_oper(SelectStmt *select_stmt,Operator *&scan_oper);
+  RC do_select(SQLStageEvent *sql_event);
+  RC do_select_aggregation(SQLStageEvent *sql_event);
 
   RC do_insert(SQLStageEvent *sql_event);
-
   RC do_update_sub_select_aggregation(UpdateField &update);
   RC do_update_sub_select(UpdateField &update);
   RC do_update(SQLStageEvent *sql_event);

@@ -240,22 +240,16 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right)
   }
 }
 
-void print_tuple_header(std::ostream &os, const ProjectOperator &oper)
+void print_tuple_header(std::ostream &os, const std::vector<QueryField> &query_fields)
 {
-  const int cell_num = oper.tuple_cell_num();
-  const TupleCellSpec *cell_spec = nullptr;
-  for (int i = 0; i < cell_num; i++) {
-    oper.tuple_cell_spec_at(i, cell_spec);
+  for (int i = 0; i < query_fields.size(); i++) {
     if (i != 0) {
       os << " | ";
     }
-
-    if (cell_spec->alias()) {
-      os << cell_spec->alias();
-    }
+    const QueryField &query_field =  query_fields[i];
+    os << query_field.string();
   }
-
-  if (cell_num > 0) {
+  if (query_fields.size() > 0) {
     os << '\n';
   }
 }
@@ -283,22 +277,6 @@ void print_tuple_header_with_table(std::ostream &os, const ProjectOperator &oper
   }
 }
 
-void print_aggr_field_header(std::ostream &os, const std::vector<AggrField> &aggr_fields)
-{
-  bool first_field = true;
-  for(auto aggr_field: aggr_fields) {
-    if (!first_field) {
-      os << " | ";
-    } else {
-      first_field = false;
-    }
-    os << aggr_field.aggrr_type_to_string();
-    os << "(";
-    os << aggr_field.aggr_name();
-    os << ")";
-  }
-  os << std::endl;
-}
 
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
@@ -448,170 +426,68 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
-RC ExecuteStage::do_select_join(SQLStageEvent *sql_event) {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
- 
-  SessionEvent *session_event = sql_event->session_event();
-  RC rc = RC::SUCCESS;
+RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&scan_oper) {
+  Operator *oper = nullptr;
+  if(select_stmt->is_inner_join()) { //内连接
+    std::vector<Operator *> scan_opers;
+    for (auto table : select_stmt->tables()) {
+      scan_opers.push_back(new TableScanRecordOperator(table));
+    }
+    
+    JoinStmt *join_stmt = select_stmt->join_stmt();
+    auto &join_units = join_stmt->join_units();
 
-  std::vector<Operator *> scan_opers;
-  for (auto table : select_stmt->tables()) {
-    scan_opers.push_back(new TableScanRecordOperator(table));
-  }
-  
-  std::vector<JoinOperator *> join_opers;
-  JoinStmt *join_stmt = select_stmt->join_stmt();
-  auto &join_units = join_stmt->join_units();
+    assert(join_units.size() < scan_opers.size());
 
-  assert(join_units.size() < scan_opers.size());
-
-  JoinOperator *join_oper = nullptr;
-  for(int i =0;i < join_units.size();i++) {
-    if(nullptr == join_oper) {
-      join_oper = new JoinOperator(scan_opers[i],scan_opers[i+1],join_units[i]);
+    JoinOperator *join_oper = nullptr;
+    for(size_t i =0;i < join_units.size();i++) {
+      if(nullptr == join_oper) {
+        join_oper = new JoinOperator(scan_opers[i],scan_opers[i+1],join_units[i]);
+      }else{
+        join_oper = new JoinOperator(join_oper,scan_opers[i+1],join_units[i]);
+      }
+    }
+    oper = join_oper;
+  }else{
+    if(select_stmt->tables().size() == 1) { //单表查询
+      if(select_stmt->is_has_order_by() || select_stmt->is_has_group_by()) {
+        oper = new TableScanRecordOperator(select_stmt->tables()[0]);
+      }else{
+        oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
+        if (nullptr == oper) {
+          oper = new TableScanOperator(select_stmt->tables()[0]);
+        }
+      }
+    }else if(select_stmt->tables().size() >= 1) { // 多表查询
+      std::vector<Operator *> scan_opers;
+      for (auto table : select_stmt->tables()) {
+        scan_opers.push_back(new TableScanRecordOperator(table));
+      }
+      oper = new DescartesOperator(scan_opers);
     }else{
-      join_oper = new JoinOperator(join_oper,scan_opers[i+1],join_units[i]);
+      LOG_WARN("select must be more than 1 tables");
+      return RC::UNIMPLENMENT;
     }
-    join_opers.push_back(join_oper);
   }
 
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(join_oper);
-  ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
-  }
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
+  // 断言操作
+  PredicateOperator *pred_oper = new PredicateOperator(select_stmt->filter_stmt());
+  pred_oper->add_child(oper);
 
-  std::stringstream ss;
-  print_tuple_header_with_table(ss, project_oper);
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
-    // get current record
-    // write to response
-    Tuple * tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
-    tuple_to_string(ss, *tuple);
-    ss << std::endl;
-  }
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
-  } else {
-    rc = project_oper.close();
-  }
-  session_event->set_response(ss.str());
-
-  for(Operator * scan_oper: scan_opers) {
-    delete scan_oper;
-  }
-  for(Operator * join_oper: join_opers) {
-    delete join_oper;
+   // 排序操作
+  SortOperator *sort_oper = nullptr;
+  if(select_stmt->is_has_order_by()) {
+    auto sort_fields = select_stmt->sort_fields();
+    sort_oper = new SortOperator(&sort_fields);
+    sort_oper->add_child(pred_oper);
   }
 
-  return rc;
-}
-
-RC ExecuteStage::do_select_dcartesian(SQLStageEvent *sql_event) {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  SessionEvent *session_event = sql_event->session_event();
-  RC rc = RC::SUCCESS;
-
-  std::vector<TableScanOperator *> scan_opers;
-  for (auto table : select_stmt->tables()) {
-    scan_opers.push_back(new TableScanOperator(table));
+  if(nullptr == sort_oper) {
+    scan_oper = pred_oper;
+  }else{
+    scan_oper = sort_oper;
   }
-  DescartesOperator descartes_operator(scan_opers);
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&descartes_operator);
-
-  ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
-
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
-  }
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
-
-  std::stringstream ss;
-  print_tuple_header_with_table(ss, project_oper);
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
-    // get current record
-    // write to response
-    Tuple * tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
-    tuple_to_string(ss, *tuple);
-    ss << std::endl;
-  }
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
-  } else {
-    rc = project_oper.close();
-  }
-  session_event->set_response(ss.str());
-
-  return rc;
-}
-
-RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event) {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  SessionEvent *session_event = sql_event->session_event();
-
-  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
-  if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-  }
-
-  DEFER([&] () {delete scan_oper;});
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(scan_oper);
-
-  AggrOperator aggr_oper(select_stmt);
-  aggr_oper.add_child(&pred_oper);
-
-  RC rc = aggr_oper.open();
-  if (rc != RC::SUCCESS) {
-    session_event->set_response("FAILURE\n");
-    return rc;
-  } 
-  std::stringstream ss;
-
-  // print header
-  print_aggr_field_header(ss, select_stmt->aggr_fields());
-
-  auto aggr_results = aggr_oper.aggr_results();
-  bool first_field = true;
-  for(auto &cell: aggr_results) {
-    if (!first_field) {
-      ss << " | ";
-    } else {
-      first_field = false;
-    }
-    cell.to_string(ss);
-  }
-  ss << std::endl;
-  aggr_oper.close();
-  session_event->set_response(ss.str());
-  return rc;
+  return RC::SUCCESS;
 }
 
 RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
@@ -620,44 +496,14 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
-  if(select_stmt->is_sort()) {
-    return do_select_sort(sql_event);
-  }
+  // 子操作符
+  Operator *child_oper;
+  do_select_create_child_oper(select_stmt, child_oper);
 
-  // 聚合查询
-  if(!select_stmt->aggr_fields().empty()){
-    return do_select_aggregation(sql_event);
-  }
-
-  // 内连接查询
-  JoinStmt *join_stmt = select_stmt->join_stmt();
-  if(!join_stmt->join_units().empty()){
-    return do_select_join(sql_event);
-  }
-
-  // 笛卡尔积查询
-  if(select_stmt->tables().size() > 1) {
-    return do_select_dcartesian(sql_event);
-  }
-
-  if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
-    return rc;
-  }
-
-  Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
-  if (nullptr == scan_oper) {
-    scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-  }
-
-  DEFER([&] () {delete scan_oper;});
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(scan_oper);
+  //投影操作
   ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
-  for (const Field &field : select_stmt->query_fields()) {
+  project_oper.add_child(child_oper);
+  for (const QueryField &field : select_stmt->query_fields()) {
     project_oper.add_projection(field.table(), field.meta());
   }
   rc = project_oper.open();
@@ -667,7 +513,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   }
 
   std::stringstream ss;
-  print_tuple_header(ss, project_oper);
+  print_tuple_header(ss, select_stmt->query_fields());
   while ((rc = project_oper.next()) == RC::SUCCESS) {
     // get current record
     // write to response
@@ -691,122 +537,6 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   session_event->set_response(ss.str());
   return rc;
 }
-
-RC ExecuteStage::do_select_sort(SQLStageEvent *sql_event) {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  SessionEvent *session_event = sql_event->session_event();
-  RC rc = RC::SUCCESS;
-
-  // 笛卡尔积查询
-  if(select_stmt->tables().size() > 1) {
-    return do_select_sort_dcartesian(sql_event);
-  }
-
-  if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
-    return rc;
-  }
-
-  TableScanRecordOperator scan_oper(select_stmt->tables()[0]);
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&scan_oper);
-
-  auto sort_fields = select_stmt->sort_fields();
-  SortOperator sort_oper(&sort_fields);
-  sort_oper.add_child(&pred_oper);
-
-  ProjectOperator project_oper;
-  project_oper.add_child(&sort_oper);
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
-  }
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
-
-  std::stringstream ss;
-  print_tuple_header(ss, project_oper);
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
-    Tuple * tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
-
-    tuple_to_string(ss, *tuple);
-    ss << std::endl;
-  }
-
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
-  } else {
-    rc = project_oper.close();
-  }
-  session_event->set_response(ss.str());
-  return rc;
-}
-
-RC ExecuteStage::do_select_sort_dcartesian(SQLStageEvent *sql_event) {
-  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
-  SessionEvent *session_event = sql_event->session_event();
-  RC rc = RC::SUCCESS;
-
-  std::vector<TableScanOperator *> scan_opers;
-  for (auto table : select_stmt->tables()) {
-    scan_opers.push_back(new TableScanOperator(table));
-  }
-  DescartesOperator descartes_operator(scan_opers);
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&descartes_operator);
-
-  auto sort_fields = select_stmt->sort_fields();
-  SortOperator sort_oper(&sort_fields);
-  sort_oper.add_child(&pred_oper);
-
-  ProjectOperator project_oper;
-  project_oper.add_child(&sort_oper);
-
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
-  }
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
-
-  std::stringstream ss;
-  print_tuple_header_with_table(ss, project_oper);
-  while ((rc = project_oper.next()) == RC::SUCCESS) {
-    // get current record
-    // write to response
-    Tuple * tuple = project_oper.current_tuple();
-    if (nullptr == tuple) {
-      rc = RC::INTERNAL;
-      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
-      break;
-    }
-    tuple_to_string(ss, *tuple);
-    ss << std::endl;
-  }
-  if (rc != RC::RECORD_EOF) {
-    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
-    project_oper.close();
-  } else {
-    rc = project_oper.close();
-  }
-  session_event->set_response(ss.str());
-
-  return rc;
-}
-
 
 RC ExecuteStage::do_help(SQLStageEvent *sql_event)
 {
@@ -983,91 +713,91 @@ RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
   SelectStmt *select_stmt = update.select_stmt();
   RC rc = RC::SUCCESS;
 
-  Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
+  // Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
 
-  DEFER([&] () {
-    delete scan_oper;
-    delete select_stmt;
-  });
+  // DEFER([&] () {
+  //   delete scan_oper;
+  //   delete select_stmt;
+  // });
 
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(scan_oper);
+  // PredicateOperator pred_oper(select_stmt->filter_stmt());
+  // pred_oper.add_child(scan_oper);
 
-  AggrOperator aggr_oper(select_stmt);
-  aggr_oper.add_child(&pred_oper);
+  // AggrOperator aggr_oper(select_stmt);
+  // aggr_oper.add_child(&pred_oper);
 
-  rc = aggr_oper.open();
-  if (rc != RC::SUCCESS) {
-    return rc;
-  } 
+  // rc = aggr_oper.open();
+  // if (rc != RC::SUCCESS) {
+  //   return rc;
+  // } 
 
-  auto aggr_results = aggr_oper.aggr_results();
+  // auto aggr_results = aggr_oper.aggr_results();
 
-  Value value;
-  if(aggr_results.empty()) {
-    value.type = NULLS;
-  }else{
-    TupleCell cell = aggr_results[0];
-    value.data = (void *)cell.data();
-    value.type = cell.attr_type();
-  }
+  // Value value;
+  // if(aggr_results.empty()) {
+  //   value.type = NULLS;
+  // }else{
+  //   TupleCell cell = aggr_results[0];
+  //   value.data = (void *)cell.data();
+  //   value.type = cell.attr_type();
+  // }
 
-  if(value.type != NULLS) {
-    const AttrType field_type = update.attr_type();
-    AttrType value_type = value.type;
-    void *data = value.data;
-    if (field_type != value_type) { // TODO try to convert the value type to field type
-      if (field_type == INTS && value_type == FLOATS) {
-        float f = *(float *)data;
-        int val = round(*(float *)data);
-        *(int *)data = val;
-      }else if (field_type == INTS && value_type == CHARS) {
-        int val = std::atoi((char *)(data));
-        *(int *)data = val;
-      }else if (field_type == FLOATS && value_type == INTS) {
-        float val = *(int *)data;
-        *(float *)data = val;
-      }else if (field_type == FLOATS && value_type == CHARS) {
-        float val = std::atof((char *)(data));
-        *(float *)data = val;
-      }else if (field_type == CHARS && value_type == INTS) {
-        std::string s = std::to_string(*(int *)data);
-        char *str = (char *)(data);
-        int i =0;
-        for(;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-        }
-        if(i < 4) {
-          str[i] = '\0';
-        }else{
-          str[4] = '\0';
-        }
-      }else if (field_type == CHARS && value_type == FLOATS) {
-        std::ostringstream oss;
-        oss<<*(float *)data;
-        std::string s(oss.str());
-        char *str = (char *)(data);
-        int i =0;
-        for(;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-        }
-        if(i < 4) {
-          str[i] = '\0';
-        }else{
-          str[4] = '\0';
-        }
-      }else if(field_type == TEXTS && value_type == CHARS){
-        value.type = TEXTS;
-      }else{
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-              update.table_name(), update.field_name(), field_type, value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-      }
-    }
-  }
+  // if(value.type != NULLS) {
+  //   const AttrType field_type = update.attr_type();
+  //   AttrType value_type = value.type;
+  //   void *data = value.data;
+  //   if (field_type != value_type) { // TODO try to convert the value type to field type
+  //     if (field_type == INTS && value_type == FLOATS) {
+  //       float f = *(float *)data;
+  //       int val = round(*(float *)data);
+  //       *(int *)data = val;
+  //     }else if (field_type == INTS && value_type == CHARS) {
+  //       int val = std::atoi((char *)(data));
+  //       *(int *)data = val;
+  //     }else if (field_type == FLOATS && value_type == INTS) {
+  //       float val = *(int *)data;
+  //       *(float *)data = val;
+  //     }else if (field_type == FLOATS && value_type == CHARS) {
+  //       float val = std::atof((char *)(data));
+  //       *(float *)data = val;
+  //     }else if (field_type == CHARS && value_type == INTS) {
+  //       std::string s = std::to_string(*(int *)data);
+  //       char *str = (char *)(data);
+  //       int i =0;
+  //       for(;i < 4 && i < s.size();i++) {
+  //         str[i] = s[i];
+  //       }
+  //       if(i < 4) {
+  //         str[i] = '\0';
+  //       }else{
+  //         str[4] = '\0';
+  //       }
+  //     }else if (field_type == CHARS && value_type == FLOATS) {
+  //       std::ostringstream oss;
+  //       oss<<*(float *)data;
+  //       std::string s(oss.str());
+  //       char *str = (char *)(data);
+  //       int i =0;
+  //       for(;i < 4 && i < s.size();i++) {
+  //         str[i] = s[i];
+  //       }
+  //       if(i < 4) {
+  //         str[i] = '\0';
+  //       }else{
+  //         str[4] = '\0';
+  //       }
+  //     }else if(field_type == TEXTS && value_type == CHARS){
+  //       value.type = TEXTS;
+  //     }else{
+  //       LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
+  //             update.table_name(), update.field_name(), field_type, value_type);
+  //       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  //     }
+  //   }
+  // }
   
-  update.set_select_value(value);
-  aggr_oper.close();
+  // update.set_select_value(value);
+  // aggr_oper.close();
   return rc;
 }
 
@@ -1207,19 +937,19 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
     return RC::GENERIC_ERROR;
   }
 
-  for(auto &update: update_stmt->update_fields()) {
-    if(update.is_has_subselect()) {
-      if(!update.select_stmt()->aggr_fields().empty()) {
-        rc = do_update_sub_select_aggregation(update);
-      }else{
-        rc = do_update_sub_select(update);
-      }
-      if(rc != RC::SUCCESS) {
-        session_event->set_response("FAILURE\n");
-        return rc;
-      }
-    }
-  }
+  // for(auto &update: update_stmt->update_fields()) {
+  //   if(update.is_has_subselect()) {
+  //     if(!update.select_stmt()->aggr_fields().empty()) {
+  //       rc = do_update_sub_select_aggregation(update);
+  //     }else{
+  //       rc = do_update_sub_select(update);
+  //     }
+  //     if(rc != RC::SUCCESS) {
+  //       session_event->set_response("FAILURE\n");
+  //       return rc;
+  //     }
+  //   }
+  // }
 
   Operator *scan_oper = try_to_create_index_scan_operator(update_stmt->filter_stmt());
   if (nullptr == scan_oper) {
@@ -1256,13 +986,13 @@ RC ExecuteStage::do_delete(SQLStageEvent *sql_event)
   }
 
   DeleteStmt *delete_stmt = (DeleteStmt *)stmt;
-  TableScanOperator scan_oper(delete_stmt->table());
+  TableScanOperator *scan_oper = new TableScanOperator(delete_stmt->table());
 
-  PredicateOperator pred_oper(delete_stmt->filter_stmt());
-  pred_oper.add_child(&scan_oper);
+  PredicateOperator *pred_oper = new PredicateOperator(delete_stmt->filter_stmt());
+  pred_oper->add_child(scan_oper);
   
   DeleteOperator delete_oper(delete_stmt, trx);
-  delete_oper.add_child(&pred_oper);
+  delete_oper.add_child(pred_oper);
 
   RC rc = delete_oper.open();
   if (rc != RC::SUCCESS) {
