@@ -130,40 +130,23 @@ public:
     if(null_map_ & (1 << index)) {
       cell.set_type(NULLS);
     }else{
-       cell.set_type(field_meta->type());
-    }
-    cell.set_data(data+ field_meta->offset());
-    cell.set_length(field_meta->len());
+      cell.set_type(field_meta->type());
+      cell.set_data(data+ field_meta->offset());
+      cell.set_length(field_meta->len());
 
-    if(field_meta->type() == TEXTS) {
-      cell.new_text();
-      RC rc = table_->read_text_record(data + field_meta->offset(), cell.text_data());
-      if(rc != RC::SUCCESS) {
-        return rc;
+      if(field_meta->type() == TEXTS) {
+        cell.new_text();
+        RC rc = table_->read_text_record(data + field_meta->offset(), cell.text_data());
+        if(rc != RC::SUCCESS) {
+          return rc;
+        }
       }
     }
+   
     return RC::SUCCESS;
   }
 
   RC find_cell(const Field &field, TupleCell &cell) const override
-  {
-    const char *table_name = field.table_name();
-    if (0 != strcmp(table_name, table_->name())) {
-      return RC::NOTFOUND;
-    }
-
-    const char *field_name = field.field_name();
-    for (size_t i = 0; i < speces_.size(); ++i) {
-      const FieldExpr * field_expr = (const FieldExpr *)speces_[i]->expression();
-      const Field &field = field_expr->field();
-      if (0 == strcmp(field_name, field.field_name())) {
-	      return cell_at(i, cell);
-      }
-    }
-    return RC::NOTFOUND;
-  }
-
-  RC find_cell(const QueryField &field, TupleCell &cell)
   {
     const char *table_name = field.table_name();
     if (0 != strcmp(table_name, table_->name())) {

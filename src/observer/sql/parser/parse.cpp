@@ -152,37 +152,24 @@ void attr_info_destroy(AttrInfo *attr_info)
   attr_info->name = nullptr;
 }
 
-void query_attr_int(QueryAttr *query_attr, int is_attr, RelAttr* rel_attr,
-  int is_value, Value *value,int is_func, FuncType func_type){
-  query_attr->is_attr = is_attr;
-  if(is_attr) {
-    query_attr->rel_attr = *rel_attr;
-  }
-  query_attr->is_value = is_value;
-  if(is_value) {
-    query_attr->value = *value;
-  }
-  query_attr->is_func = is_func;
-  if(is_func) {
-    query_attr->func_type = func_type;
-  }
+void aggr_attr_int(AggrAttr *aggr_attr,RelAttr* rel_attr, AggrType aggr_type)
+{
+  aggr_attr->rel_attr = *rel_attr;
+  aggr_attr->aggr_type = aggr_type;
 }
-void query_attr_destroy(QueryAttr *query_attr){
-  if(query_attr->is_attr) {
-    relation_attr_destroy(&query_attr->rel_attr);
-  }
-  if(query_attr->is_value) {
-    value_destroy(&query_attr->value);
-  }
-  if(query_attr->is_func) {
-    query_attr->func_type = NO_FUNC;
-  }
+void aggr_attr_destroy(AggrAttr *aggr_attr)
+{
+  relation_attr_destroy(&aggr_attr->rel_attr);
 }
 
 void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, QueryAttr *query_attr)
+void selects_append_attribute(Selects *selects, RelAttr* rel_attr)
 {
-  selects->query_attrs[selects->query_num++] = *query_attr;
+  selects->attributes[selects->attr_num++] = *rel_attr;
+}
+void selects_append_aggr_attribute(Selects *selects,AggrAttr *aggr_attr)
+{
+  selects->aggr_attributes[selects->aggr_num++] = *aggr_attr;
 }
 void selects_append_relation(Selects *selects, const char *relation_name)
 {
@@ -211,10 +198,16 @@ void selects_append_group_by(Selects *selects, RelAttr *rel_attr) {
 void selects_destroy(Selects *selects)
 {
   // destory RelAttr
-  for (size_t i = 0; i < selects->query_num; i++) {
-    query_attr_destroy(&selects->query_attrs[i]);
+  for (size_t i = 0; i < selects->attr_num; i++) {
+    relation_attr_destroy(&selects->attributes[i]);
   }
-  selects->query_num = 0;
+  selects->attr_num = 0;
+
+  // destory AggrAttr
+  for (size_t i = 0; i < selects->aggr_num; i++) {
+    aggr_attr_destroy(&selects->aggr_attributes[i]);
+  }
+  selects->aggr_num = 0;
 
   // destory relations
   for (size_t i = 0; i < selects->relation_num; i++) {

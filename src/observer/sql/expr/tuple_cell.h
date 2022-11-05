@@ -51,6 +51,9 @@ public:
   int compare(const TupleCell &other) const;
   int like_match(const TupleCell &other) const;
   bool null_compare(const TupleCell &other, CompOp comp) const;
+  bool IsNull() const {
+    return attr_type_ == NULLS;
+  }
 
   const char *data() const { return data_;}
   int length() const { return length_; }

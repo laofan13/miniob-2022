@@ -34,7 +34,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_operator.h"
 #include "sql/operator/project_operator.h"
 #include "sql/operator/update_operator.h"
-#include "sql/operator/aggr_operator.h"
+#include "sql/operator/aggregation_operator.h"
 #include "sql/operator/descartes_operator.h"
 #include "sql/operator/join_operator.h"
 #include "sql/operator/table_scan_record_operator.h"
@@ -240,43 +240,23 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right)
   }
 }
 
-void print_tuple_header(std::ostream &os, const std::vector<QueryField> &query_fields)
+void print_tuple_header(std::ostream &os, SelectStmt *select_stmt)
 {
+  auto query_fields = select_stmt->query_fields();
   for (int i = 0; i < query_fields.size(); i++) {
     if (i != 0) {
       os << " | ";
     }
-    const QueryField &query_field =  query_fields[i];
-    os << query_field.string();
+    if(select_stmt->is_has_mutil_table()) {
+      os << query_fields[i].table_name();
+      os << ".";
+    }
+    os << query_fields[i].field_name();
   }
   if (query_fields.size() > 0) {
     os << '\n';
   }
 }
-
-void print_tuple_header_with_table(std::ostream &os, const ProjectOperator &oper)
-{
-  const int cell_num = oper.tuple_cell_num();
-  const TupleCellSpec *cell_spec = nullptr;
-  for (int i = 0; i < cell_num; i++) {
-    oper.tuple_cell_spec_at(i, cell_spec);
-    if (i != 0) {
-      os << " | ";
-    }
-
-    auto exper = (FieldExpr*)cell_spec->expression();
-
-    if (cell_spec->alias()) {
-      os << exper->table_name();
-      os << ".";
-      os <<cell_spec->alias();
-    }
-  }
-  if (cell_num > 0) {
-    os << '\n';
-  }
-}
-
 
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
 {
@@ -473,19 +453,24 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
   // 断言操作
   PredicateOperator *pred_oper = new PredicateOperator(select_stmt->filter_stmt());
   pred_oper->add_child(oper);
+  oper = pred_oper;
 
    // 排序操作
-  SortOperator *sort_oper = nullptr;
   if(select_stmt->is_has_order_by()) {
-    sort_oper = new SortOperator(select_stmt->sort_fields());
-    sort_oper->add_child(pred_oper);
+    SortOperator *sort_oper = new SortOperator(select_stmt->sort_fields());
+    sort_oper->add_child(oper);
+    oper = sort_oper;
   }
 
-  if(nullptr == sort_oper) {
-    scan_oper = pred_oper;
-  }else{
-    scan_oper = sort_oper;
+  // 聚集操作
+  if(select_stmt->is_has_order_by()) {
+    // AggregationOperator *aggr_oper = new AggregationOperator(select_stmt->query_fields());
+    // aggr_oper->add_agg_exprs(select_stmt->group_fields());
+    // aggr_oper->add_child(oper);
+    // oper = aggr_oper;
   }
+  scan_oper = oper;
+ 
   return RC::SUCCESS;
 }
 
@@ -502,7 +487,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   //投影操作
   ProjectOperator project_oper;
   project_oper.add_child(child_oper);
-  for (const QueryField &field : select_stmt->query_fields()) {
+  for (const Field &field : select_stmt->query_fields()) {
     project_oper.add_projection(field.table(), field.meta());
   }
   rc = project_oper.open();
@@ -512,17 +497,14 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   }
 
   std::stringstream ss;
-  print_tuple_header(ss, select_stmt->query_fields());
+  print_tuple_header(ss, select_stmt);
   while ((rc = project_oper.next()) == RC::SUCCESS) {
-    // get current record
-    // write to response
     Tuple * tuple = project_oper.current_tuple();
     if (nullptr == tuple) {
       rc = RC::INTERNAL;
       LOG_WARN("failed to get current record. rc=%s", strrc(rc));
       break;
     }
-
     tuple_to_string(ss, *tuple);
     ss << std::endl;
   }

@@ -116,7 +116,7 @@ bool JoinOperator::do_predicate(Tuple *tuple)
     }
 
     // 有空值
-    if(left_cell.attr_type() == NULLS || right_cell.attr_type() == NULLS) {
+    if(left_cell.IsNull() || right_cell.IsNull()) {
       if(left_cell.null_compare(right_cell,comp)) {
         continue;
       }

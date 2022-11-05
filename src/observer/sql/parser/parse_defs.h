@@ -64,16 +64,19 @@ typedef enum
 
 typedef enum
 {
-  NO_FUNC,
+  LENGTH_FUNC,
+  ROUND_FUNC,
+  DATE_FORMAT_FUNC
+} FuncType;
+
+typedef enum
+{
   MAX_FUNC,
   MIN_FUNC,
   COUNT_FUNC,
   AVG_FUNC,
   SUM_FUNC,
-  LENGTH_FUNC,
-  ROUND_FUNC,
-  DATE_FORMAT_FUNC
-} FuncType;
+} AggrType;
 
 typedef enum
 {
@@ -95,13 +98,9 @@ typedef struct _Value {
 
 //查询类型
 typedef struct {
-  int is_attr;
   RelAttr rel_attr;
-  int is_value;
-  Value value;
-  int is_func;
-  FuncType func_type;
-}QueryAttr;
+  AggrType aggr_type;
+}AggrAttr;
 
 typedef struct _Condition {
   int left_is_attr;    // TRUE if left-hand side is an attribute
@@ -128,8 +127,11 @@ typedef struct {
 
 // struct of select
 typedef struct {
-  size_t query_num;                
-  QueryAttr query_attrs[MAX_NUM];  
+  size_t attr_num;                
+  RelAttr attributes[MAX_NUM];  
+
+  size_t aggr_num;                
+  AggrAttr aggr_attributes[MAX_NUM]; 
 
   size_t relation_num;            // Length of relations in Fro clause
   char *relations[MAX_NUM];       // relations in From clause
@@ -298,12 +300,12 @@ void join_condition_destroy(JoinCond *join_cond);
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable);
 void attr_info_destroy(AttrInfo *attr_info);
 
-void query_attr_int(QueryAttr *query_attr, int is_attr, RelAttr* rel_attr,
-  int is_value, Value *value,int is_func, FuncType func_type);
-void query_attr_destroy(QueryAttr *query);
+void aggr_attr_int(AggrAttr *aggr_attr, RelAttr* rel_attr, AggrType aggr_type);
+void aggr_attr_destroy(AggrAttr *aggr_attr);
 
 void selects_init(Selects *selects, ...);
-void selects_append_attribute(Selects *selects, QueryAttr *query_attr);
+void selects_append_attribute(Selects *selects, RelAttr* rel_attr);
+void selects_append_aggr_attribute(Selects *selects, AggrAttr *aggr_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_join_conditions(Selects *selects, JoinCond *join_cond);

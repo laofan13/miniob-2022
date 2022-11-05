@@ -13,10 +13,6 @@
 typedef struct ParserContext {
   Query * ssql;
   Selects selection;
-
-  QueryAttr query_attr;
-  FuncType func_type;
-
   size_t select_length;
   size_t condition_length;
   size_t from_length;
@@ -25,6 +21,7 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
+  AggrType aggr_type;
   OrderType order_type;
   int nullable;
   char id[MAX_NUM];
@@ -453,9 +450,10 @@ update_value:
 
 
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM select_rel where suffix_by SEMICOLON
+    SELECT attr_value attr_list FROM ID relation where suffix_by SEMICOLON
 	{
 		CONTEXT->ssql->flag=SCF_SELECT;
+		selects_append_relation(&CONTEXT->ssql->sstr.selection, $5);
 		selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
 		//临时变量清零
 		CONTEXT->condition_length=0;
@@ -465,80 +463,65 @@ select:				/*  select 语句的语法解析树*/
 	}
 	;
 
-select_attr:
-	attribute attr_list {
-
-	}
-	;
-
 attr_list:
     /* empty */
-    | COMMA attribute attr_list {
+    | COMMA attr_value attr_list {
 		
     }
   	;
 
-attribute:
-	attr_value {
-		CONTEXT->query_attr.is_func = 0;
-		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &CONTEXT->query_attr);
-	}
-	| func_type LBRACE attr_value RBRACE {
-		CONTEXT->query_attr.is_func = 1;
-		CONTEXT->query_attr.func_type = CONTEXT->func_type;
-		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &CONTEXT->query_attr);
-	};
-
 attr_value:
 	STAR {
-		CONTEXT->query_attr.is_attr = 1;
-		relation_attr_init(&CONTEXT->query_attr.rel_attr, NULL, "*");
-	} 
-	|ID{
-		CONTEXT->query_attr.is_attr = 1;
-		relation_attr_init(&CONTEXT->query_attr.rel_attr, NULL, $1);
-	} 
-	|ID DOT ID {
-		CONTEXT->query_attr.is_attr = 1;
-		relation_attr_init(&CONTEXT->query_attr.rel_attr, $1, $3);
-	}  
-	| NUMBER {
-		CONTEXT->query_attr.is_value = 1;
-		value_init_integer(&CONTEXT->query_attr.value, $1);
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, NULL, "*");
+		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
-	| FLOAT {
-		CONTEXT->query_attr.is_value = 1;
-		value_init_float(&CONTEXT->query_attr.value, $1);
+	|ID {
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, NULL, $1);
+		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
-	| DATE_STR {
-		CONTEXT->query_attr.is_value = 1;
-		value_init_date(&CONTEXT->query_attr.value, $1);
+	| ID DOT ID {
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, $1, $3);
+		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
-	| SSS {
-		CONTEXT->query_attr.is_value = 1;
-		value_init_string(&CONTEXT->query_attr.value, $1);
-	}
-	| NULL_T {
-		CONTEXT->query_attr.is_value = 1;
-		value_init_null(&CONTEXT->query_attr.value);
-	}
-	;
+	| aggr_type LBRACE STAR RBRACE {
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, NULL, "*");
+		
+		AggrAttr aggr_attr;
+		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
 
-func_type:
-	 MAX { CONTEXT->func_type = MAX_FUNC; }
-    | MIN { CONTEXT->func_type = MIN_FUNC; }
-    | COUNT{ CONTEXT->func_type = COUNT_FUNC; }
-    | AVG { CONTEXT->func_type = AVG_FUNC; }
-	| SUM { CONTEXT->func_type = SUM_FUNC; }
-	| LENGTH { CONTEXT->func_type = LENGTH_FUNC; }
-    | ROUND { CONTEXT->func_type = ROUND_FUNC; }
-	| DATE_FORMAT { CONTEXT->func_type = DATE_FORMAT_FUNC; }
+		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+	}
+	| aggr_type LBRACE ID RBRACE {
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, NULL, $3);
+		
+		AggrAttr aggr_attr;
+		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
+
+		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+	}
+	| aggr_type LBRACE ID DOT ID RBRACE {
+		RelAttr rel_attr;
+		relation_attr_init(&rel_attr, $3, $5);
+		
+		AggrAttr aggr_attr;
+		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
+
+		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+	};
+
+aggr_type:
+	 MAX { CONTEXT->aggr_type = MAX_FUNC; }
+    | MIN { CONTEXT->aggr_type = MIN_FUNC; }
+    | COUNT{ CONTEXT->aggr_type = COUNT_FUNC; }
+    | AVG { CONTEXT->aggr_type = AVG_FUNC; }
+	| SUM { CONTEXT->aggr_type = SUM_FUNC; }
     ;
 
-select_rel:
-	ID relation {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $1);
-	};
 
 relation:
 	/* empty */

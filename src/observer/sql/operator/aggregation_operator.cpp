@@ -12,14 +12,21 @@ See the Mulan PSL v2 for more details. */
 // Created by WangYunlai on 2021/6/9.
 //
 
-#include "sql/operator/aggr_operator.h"
+#pragma once
+
+#include <memory>
+#include <unordered_map>
+#include <utility>
+#include <functional>
+
+#include "sql/operator/aggregation_operator.h"
 #include "sql/stmt/select_stmt.h"
 #include "storage/common/table.h"
 #include "rc.h"
 #include "float.h"
 #include "util/comparator.h"
 
-RC AggrOperator::open()
+RC AggregationOperator::open()
 {
   if (children_.size() != 1) {
     LOG_WARN("delete operator must has 1 child");
@@ -32,7 +39,7 @@ RC AggrOperator::open()
     LOG_WARN("failed to open child operator: %s", strrc(rc));
     return rc;
   }
-  // init aggregation
+
   while (RC::SUCCESS == (rc = child->next())) {
     Tuple *tuple = child->current_tuple();
     if (nullptr == tuple) {
@@ -44,12 +51,12 @@ RC AggrOperator::open()
   return RC::SUCCESS;
 }
 
-RC AggrOperator::next()
+RC AggregationOperator::next()
 {
   return RC::RECORD_EOF;
 }
 
-RC AggrOperator::close()
+RC AggregationOperator::close()
 {
   children_[0]->close();
   return RC::SUCCESS;
