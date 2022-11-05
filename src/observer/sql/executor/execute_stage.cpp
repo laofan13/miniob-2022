@@ -477,8 +477,7 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
    // 排序操作
   SortOperator *sort_oper = nullptr;
   if(select_stmt->is_has_order_by()) {
-    auto sort_fields = select_stmt->sort_fields();
-    sort_oper = new SortOperator(&sort_fields);
+    sort_oper = new SortOperator(select_stmt->sort_fields());
     sort_oper->add_child(pred_oper);
   }
 

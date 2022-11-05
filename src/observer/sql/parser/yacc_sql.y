@@ -700,14 +700,14 @@ order_by_attr:
 		relation_attr_init(&order_attr.rel_attr, NULL, $1);
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->selection, &order_attr);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
 	}
 	| ID DOT ID order_type{
 		OrderAttr order_attr;
 		relation_attr_init(&order_attr.rel_attr, $1, $3);
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->selection, &order_attr);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
 	};
 
 order_type:
@@ -732,12 +732,12 @@ group_by_attr:
 	| ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, NULL, $1);
-		selects_append_group_by(&CONTEXT->selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
 	| ID DOT ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, $1, $3);
-		selects_append_group_by(&CONTEXT->selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	};
 
 load_data:

@@ -28,15 +28,13 @@ RC SortOperator::open()
     table_tuples_.push_back(tuple);
   }
 
-  auto sort_fields = sort_fields_;
+  auto &sort_fields = sort_fields_;
   std::sort(table_tuples_.begin(),table_tuples_.end(), [sort_fields](Tuple *t1, Tuple *t2) {
     int ret = 0;
     TupleCell cell1;
     TupleCell cell2;
-    int size = sort_fields->size();
-    SortField &sort_field = sort_fields->at(0);
-    for(int i = 0; i < sort_fields->size();i++) {
-      SortField &sort_field = sort_fields->at(i);
+    for(int i = 0; i < sort_fields.size();i++) {
+      const SortField &sort_field = sort_fields[i];
 
       t1->find_cell(sort_field, cell1);
       t2->find_cell(sort_field, cell2);

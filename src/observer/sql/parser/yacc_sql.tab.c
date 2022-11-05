@@ -2470,7 +2470,7 @@ yyreduce:
 		relation_attr_init(&order_attr.rel_attr, NULL, (yyvsp[-1].string));
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->selection, &order_attr);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
 	}
 #line 2476 "yacc_sql.tab.c"
     break;
@@ -2482,7 +2482,7 @@ yyreduce:
 		relation_attr_init(&order_attr.rel_attr, (yyvsp[-3].string), (yyvsp[-1].string));
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->selection, &order_attr);
+		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
 	}
 #line 2488 "yacc_sql.tab.c"
     break;
@@ -2524,7 +2524,7 @@ yyreduce:
              {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, NULL, (yyvsp[0].string));
-		selects_append_group_by(&CONTEXT->selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
 #line 2530 "yacc_sql.tab.c"
     break;
@@ -2534,7 +2534,7 @@ yyreduce:
                     {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, (yyvsp[-2].string), (yyvsp[0].string));
-		selects_append_group_by(&CONTEXT->selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
 	}
 #line 2540 "yacc_sql.tab.c"
     break;

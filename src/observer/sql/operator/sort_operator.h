@@ -23,10 +23,9 @@ class DeleteStmt;
 class SortOperator : public Operator
 {
 public:
-  SortOperator(std::vector<SortField> *sort_fields)
+  SortOperator(const std::vector<SortField> &sort_fields):sort_fields_(sort_fields)
   {
     current_index_ = 0;
-    sort_fields_ = sort_fields;
   }
 
   virtual ~SortOperator() {
@@ -45,7 +44,7 @@ public:
   //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override
 
 private:
-  std::vector<SortField> *sort_fields_;
+  const std::vector<SortField> &sort_fields_;
   std::vector<Tuple*> table_tuples_;
   int current_index_;
   Tuple *tuple_;
