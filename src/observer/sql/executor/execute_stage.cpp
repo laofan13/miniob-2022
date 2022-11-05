@@ -253,9 +253,33 @@ void print_tuple_header(std::ostream &os, SelectStmt *select_stmt)
     }
     os << query_fields[i].field_name();
   }
+
+  auto aggr_fields = select_stmt->aggr_fields();
+  for (int i = 0; i < aggr_fields.size(); i++) {
+    if(query_fields.size() > 0) {
+      os << " | ";
+    }else{
+      if (i != 0) {
+        os << " | ";
+      }
+    }
+    os << aggr_fields[i].aggr_func();
+    os << "(";
+    if(select_stmt->is_has_mutil_table()) {
+      os << aggr_fields[i].table_name();
+      os << ".";
+    }
+    os << aggr_fields[i].aggr_name();
+    os << ")";
+  }
   if (query_fields.size() > 0) {
     os << '\n';
   }
+
+  if (query_fields.size() > 0 || aggr_fields.size()>0) {
+    os << '\n';
+  }
+
 }
 
 void tuple_to_string(std::ostream &os, const Tuple &tuple)
@@ -463,11 +487,10 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
   }
 
   // 聚集操作
-  if(select_stmt->is_has_order_by()) {
-    // AggregationOperator *aggr_oper = new AggregationOperator(select_stmt->query_fields());
-    // aggr_oper->add_agg_exprs(select_stmt->group_fields());
-    // aggr_oper->add_child(oper);
-    // oper = aggr_oper;
+  if(select_stmt->is_has_group_by()) {
+    AggregationOperator *aggr_oper = new AggregationOperator(select_stmt->aggr_fields(), select_stmt->group_fields());
+    aggr_oper->add_child(oper);
+    oper = aggr_oper;
   }
   scan_oper = oper;
  

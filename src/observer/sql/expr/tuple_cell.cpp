@@ -167,3 +167,202 @@ bool TupleCell::null_compare(const TupleCell &other, CompOp comp) const{
   }
   return false;
 }
+TupleCell TupleCell::Add(int i) const
+{
+  int this_data = *(int *)data_;
+  *(int *)data_ = this_data + i;
+  return *this;
+}
+
+TupleCell TupleCell::Add(const TupleCell &other) const
+{
+  switch (this->attr_type_){
+  case INTS:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    *(int *)data_ = this_data + other_data;
+  }break;
+  case FLOATS:{
+    float this_data = *(float *)data_;
+    float other_data = *(float *)(other.data_);
+    *(float *)data_ = this_data + other_data;
+  }break;
+  case DATES:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    *(int *)data_ = this_data + other_data;
+  }break;
+  case CHARS:{
+    int cell_value = std::atoi((char *)other.data_);
+    *(int *)(data_) += cell_value;
+  }break;
+  case NULLS:
+    break;
+  default:
+    break;
+  }
+  return *this;
+}
+TupleCell TupleCell::Max(const TupleCell &other) const
+{
+  bool less = false;
+  switch (this->attr_type_)
+  {
+  case INTS:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    if(this_data < other_data) {
+      less = true;
+    }
+  }break;
+  case FLOATS:{
+    float this_data = *(float *)data_;
+    float other_data = *(float *)(other.data_);
+    if(this_data < other_data) {
+      less = true;
+    }
+  }break;
+  case DATES:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    if(this_data < other_data) {
+      less = true;
+    }
+  }break;
+  case CHARS:{
+    if(compare_string(this->data_, this->length_, other.data_, other.length_) < 0) {
+      less = true;
+    }
+  }break;
+  case NULLS:
+    break;
+  default:
+    break;
+  }
+  return less? other : *this;
+}
+TupleCell TupleCell::Min(const TupleCell &other) const
+{
+  bool then = false;
+  switch (this->attr_type_)
+  {
+  case INTS:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    if(this_data > other_data) {
+      then = true;
+    }
+  }break;
+  case FLOATS:{
+    float this_data = *(float *)data_;
+    float other_data = *(float *)(other.data_);
+    if(this_data > other_data) {
+      then = true;
+    }
+  }break;
+  case DATES:{
+    int this_data = *(int *)data_;
+    int other_data = *(int *)(other.data_);
+    if(this_data > other_data) {
+      then = true;
+    }
+  }break;
+  case CHARS:{
+    if(compare_string(this->data_, this->length_, other.data_, other.length_) > 0) {
+      then = true;
+    }
+  }break;
+  case NULLS:
+    break;
+  default:
+    break;
+  }
+  return then ? other : *this;
+}
+
+TupleCell TupleCell::create_zero_cell(AttrType attr_type) {
+  char *data = new char[4];
+  switch (attr_type)
+  {
+  case INTS: 
+    *(int *)data = 0;
+    break;
+  case FLOATS:
+    *(float *)data = 0.0;
+    break;
+  case DATES:
+    *(int *)data = 0;
+    break;
+  case CHARS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 0;
+    }
+    break;
+  case NULLS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 0;
+    }
+    break;
+  default:
+    break;
+  }
+  return TupleCell(attr_type, 4, data);
+}
+
+TupleCell TupleCell::create_max_cell(AttrType attr_type) {
+  char *data = new char[4];
+  switch (attr_type)
+  {
+  case INTS: 
+    *(int *)data = INT32_MAX;
+    break;
+  case FLOATS:
+    *(float *)data = FLT_MAX;
+    break;
+  case DATES:
+    *(int *)data = INT32_MAX;
+    break;
+  case CHARS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 127;
+    }
+    break;
+  case NULLS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 0;
+    }
+    break;
+  default:
+    break;
+  }
+  return TupleCell(attr_type,4,data);
+}
+
+TupleCell TupleCell::create_min_cell(AttrType attr_type) {
+  char *data = new char[4];
+  switch (attr_type)
+  {
+  case INTS: 
+    *(int *)data = INT32_MIN;
+    break;
+  case FLOATS:
+    *(float *)data = FLT_MIN;
+    break;
+  case DATES:
+    *(int *)data = INT32_MIN;
+    break;
+  case CHARS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 0;
+    }
+    break;
+  case NULLS:
+    for(int i =0;i < 4;i++) {
+      data[i] = 0;
+    }
+    break;
+  default:
+    break;
+  }
+  return TupleCell(attr_type,4,data);
+}

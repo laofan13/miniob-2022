@@ -17,6 +17,7 @@
 #include <iostream>
 #include <string>
 
+#include "sql/expr/tuple.h"
 
 using hash_t = std::size_t;
 
@@ -83,7 +84,7 @@ class HashUtil {
         return Hash<int32_t>(&raw);
       }
       default: {
-        assert(false);
+        break;
       }
     }
   }

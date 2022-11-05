@@ -104,3 +104,21 @@ public:
 private:
   TupleCell tuple_cell_;
 };
+
+
+class AggrExpr: public FieldExpr 
+{
+public:
+  AggrExpr() = default;
+  AggrExpr(const Table *table, const FieldMeta *field, const AggrType aggr_type) 
+  : FieldExpr(table, field),aggr_type_(aggr_type)
+  {}
+
+  virtual ~AggrExpr() = default;
+
+  const AggrType aggr_type() const {
+    return aggr_type_;
+  }
+private:
+  AggrType aggr_type_;
+};

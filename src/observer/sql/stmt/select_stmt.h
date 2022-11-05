@@ -64,7 +64,7 @@ public:
   }
 
   bool is_has_group_by() {
-    return !group_fields_.empty();
+    return !aggr_fields_.empty() || !group_fields_.empty();
   }
 
   

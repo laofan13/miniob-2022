@@ -15,6 +15,8 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <iostream>
+#include "float.h"
+
 #include "storage/common/table.h"
 #include "storage/common/field_meta.h"
 #include "storage/default/disk_buffer_pool.h"
@@ -30,7 +32,7 @@ public:
   TupleCell(AttrType attr_type, char *data)
     : attr_type_(attr_type), data_(data)
   {}
-  TupleCell(AttrType attr_type,int length, char *data)
+  TupleCell(AttrType attr_type, int length, char *data)
     : attr_type_(attr_type), length_(length),data_(data)
   {}
 
@@ -44,32 +46,41 @@ public:
   void set_length(int length) { this->length_ = length; }
   void set_data(char *data) { this->data_ = data; }
   void set_data(const char *data) { this->set_data(const_cast<char *>(data)); }
-
+  
   void to_string(std::ostream &os) const;
   void to_text(std::ostream &os) const;
 
   int compare(const TupleCell &other) const;
   int like_match(const TupleCell &other) const;
   bool null_compare(const TupleCell &other, CompOp comp) const;
-  bool IsNull() const {
-    return attr_type_ == NULLS;
-  }
 
+  TupleCell Add(int i) const; 
+  TupleCell Add(const TupleCell &other) const; 
+  TupleCell Max(const TupleCell &other) const; 
+  TupleCell Min(const TupleCell &other) const; 
+  
   const char *data() const { return data_;}
   int length() const { return length_; }
 
-  AttrType attr_type() const
-  {
-    return attr_type_;
-  }
+  char * text_data() {return text_data_;}
+
+  bool IsNull() const { return attr_type_ == NULLS; }
+  AttrType attr_type() const { return attr_type_; }
 
   void new_text() {
     text_data_ = new char[TEXTPAGESIZE];
   }
-  char * text_data() {return text_data_;}
+
+public:
+  static TupleCell create_zero_cell(AttrType attr_type);
+  static TupleCell create_max_cell(AttrType attr_type);
+  static TupleCell create_min_cell(AttrType attr_type);
+
 private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = -1;
   char *data_ = nullptr; // real data. no need to move to field_meta.offset
   char *text_data_ = nullptr;
 };
+
+

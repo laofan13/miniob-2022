@@ -20,135 +20,6 @@ See the Mulan PSL v2 for more details. */
 
 #include "util/hash_util.h"
 
-// class SimpleAggregationHashTable {
-//  public:
- 
-
-//   SimpleAggregationHashTable(std::vector<const Expression *> &agg_exprs,
-//                             const std::vector<QueryField> &aggr_fields)
-//       : agg_exprs_{agg_exprs}, aggr_fields_{aggr_fields} {}
-
-//   /** @return The initial aggregrate value for this aggregation executor */
-//   auto GenerateInitialAggregateValue() -> AggregateValue {
-//     std::vector<TupleCell> values{};
-//     for (const auto &aggr_field : aggr_fields_) {
-//       if(aggr_field.is_has_func()) {
-//         switch (aggr_field.func_type()) {
-//           case FuncType::COUNT_FUNC:
-//             // Count starts at zero.
-//             values.emplace_back(ValueFactory::GetIntegerValue(0));
-//             break;
-//           case FuncType::SUM_FUNC:
-//             // Max starts at INT_MIN.
-//             values.emplace_back(ValueFactory::GetIntegerValue(BUSTUB_INT32_MIN));
-//             break;
-//           case FuncType::SUM_FUNC:
-//             // Max starts at INT_MIN.
-//             values.emplace_back(ValueFactory::GetIntegerValue(BUSTUB_INT32_MIN));
-//             break;
-//           case FuncType::MAX_FUNC:
-//             // Sum starts at zero.
-//             values.emplace_back(ValueFactory::GetIntegerValue(0));
-//             break;
-//           case FuncType::MIN_FUNC:
-//             // Min starts at INT_MAX.
-//             values.emplace_back(ValueFactory::GetIntegerValue(BUSTUB_INT32_MAX));
-//             break;
-//         }
-//       }
-      
-//     }
-//     return {values};
-//   }
-
-//   /**
-//    * Combines the input into the aggregation result.
-//    * @param[out] result The output aggregate value
-//    * @param input The input value
-//    */
-//   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
-//     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
-//       switch (agg_types_[i]) {
-//         case AggregationType::CountAggregate:
-//           // Count increases by one.
-//           result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
-//           break;
-//         case AggregationType::SumAggregate:
-//           // Sum increases by addition.
-//           result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
-//           break;
-//         case AggregationType::MinAggregate:
-//           // Min is just the min.
-//           result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
-//           break;
-//         case AggregationType::MaxAggregate:
-//           // Max is just the max.
-//           result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
-//           break;
-//       }
-//     }
-//   }
-
-//   /**
-//    * Inserts a value into the hash table and then combines it with the current aggregation.
-//    * @param agg_key the key to be inserted
-//    * @param agg_val the value to be inserted
-//    */
-//   void InsertCombine(const AggregateKey &agg_key, const AggregateValue &agg_val) {
-//     if (ht_.count(agg_key) == 0) {
-//       ht_.insert({agg_key, GenerateInitialAggregateValue()});
-//     }
-//     CombineAggregateValues(&ht_[agg_key], agg_val);
-//   }
-
-//  private:
-//   /** The hash table is just a map from aggregate keys to aggregate values */
-//   std::unordered_map<AggregateKey, AggregateValue> ht_{};
-//   /** The aggregate expressions that we have */
-//   std::vector<const Expression *> agg_exprs_;
-//   /** The types of aggregations that we have */
-//   const std::vector<QueryField> &aggr_fields_;
-// };
-
-class AggregationOperator : public Operator
-{
-public:
-  AggregationOperator(const std::vector<AggrField> &sort_fields)
-    : aggr_fields_(sort_fields)
-  {
-    
-  }
-
-  ~AggregationOperator(){
-     if(children_[0]) {
-      delete children_[0];
-      children_[0] = nullptr;
-    }
-  }
-
-  void add_agg_exprs(const std::vector<Field> &group_fields) {
-    for(auto &field: group_fields) {
-      agg_exprs_.push_back(new FieldExpr(field.table(),field.meta()));
-    }
-  }
-
-  RC open() override;
-  RC next() override;
-  RC close() override;
-
-  Tuple * current_tuple() override {
-    return nullptr;
-  }
-  //int tuple_cell_num() const override
-  //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override
-private:
-  const std::vector<AggrField> &aggr_fields_;
-  std::vector<const Expression *> agg_exprs_;
-  
-  // SimpleAggregationHashTable aht_;
-};
-
-
 /** AggregateKey represents a key in an aggregation operation */
 struct AggregateKey {
   /** The group-by values */
@@ -186,4 +57,181 @@ namespace std {
       return curr_hash;
     }
   };
+};
+
+
+class SimpleAggregationHashTable {
+public:
+  SimpleAggregationHashTable(const std::vector<AggrField> &aggr_fields)
+  {
+    this->agg_exprs_.reserve(aggr_fields.size());
+    for (const auto &field : aggr_fields) {
+      agg_exprs_.push_back(new AggrExpr(field.table(), field.meta(),field.aggr_type()));
+    }
+  }
+
+  ~SimpleAggregationHashTable () {
+    for (const auto exprs: agg_exprs_) {
+      delete exprs;
+    }
+    agg_exprs_.clear();
+  }
+
+  /** @return The initial aggregrate value for this aggregation executor */
+  auto GenerateInitialAggregateValue() -> AggregateValue {
+    std::vector<TupleCell> values{};
+    for (const auto &aggr_expr : agg_exprs_) {
+      AttrType attr_type = aggr_expr->field().attr_type();
+      switch (aggr_expr->aggr_type()) {
+      case AggrType::COUNT_FUNC:
+        values.emplace_back(TupleCell::create_zero_cell(INTS));
+        break;
+      case AggrType::SUM_FUNC:
+        values.emplace_back(TupleCell::create_zero_cell(attr_type));
+        break;
+      case AggrType::AVG_FUNC:
+        values.emplace_back(TupleCell::create_zero_cell(attr_type));
+        break;
+      case AggrType::MAX_FUNC:
+        values.emplace_back(TupleCell::create_min_cell(attr_type));
+        break;
+      case AggrType::MIN_FUNC:
+        values.emplace_back(TupleCell::create_max_cell(attr_type));
+        break;
+      }
+    }
+    return {values};
+  }
+
+  /**
+   * Combines the input into the aggregation result.
+   * @param[out] result The output aggregate value
+   * @param input The input value
+   */
+  void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
+    for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
+      switch (agg_exprs_[i]->aggr_type()) {
+        case AggrType::COUNT_FUNC:
+        result->aggregates_[i] = result->aggregates_[i].Add(1);
+        break;
+      case AggrType::SUM_FUNC:
+        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+        break;
+      case AggrType::AVG_FUNC:
+        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+        break;
+      case AggrType::MAX_FUNC:
+        result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
+        break;
+      case AggrType::MIN_FUNC:
+        result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Inserts a value into the hash table and then combines it with the current aggregation.
+   * @param agg_key the key to be inserted
+   * @param agg_val the value to be inserted
+   */
+  void InsertCombine(const AggregateKey &agg_key, const AggregateValue &agg_val) {
+    if (ht_.count(agg_key) == 0) {
+      ht_.insert({agg_key, GenerateInitialAggregateValue()});
+    }
+    CombineAggregateValues(&ht_[agg_key], agg_val);
+  }
+
+   /** An iterator over the aggregation hash table */
+  class Iterator {
+   public:
+    /** Creates an iterator for the aggregate map. */
+    explicit Iterator(std::unordered_map<AggregateKey, AggregateValue>::const_iterator iter) : iter_{iter} {}
+
+    /** @return The key of the iterator */
+    auto Key() -> const AggregateKey & { return iter_->first; }
+
+    /** @return The value of the iterator */
+    auto Val() -> const AggregateValue & { return iter_->second; }
+
+    /** @return The iterator before it is incremented */
+    auto operator++() -> Iterator & {
+      ++iter_;
+      return *this;
+    }
+
+    /** @return `true` if both iterators are identical */
+    auto operator==(const Iterator &other) -> bool { return this->iter_ == other.iter_; }
+
+    /** @return `true` if both iterators are different */
+    auto operator!=(const Iterator &other) -> bool { return this->iter_ != other.iter_; }
+
+   private:
+    /** Aggregates map */
+    std::unordered_map<AggregateKey, AggregateValue>::const_iterator iter_;
+  };
+
+  /** @return Iterator to the start of the hash table */
+  auto Begin() -> Iterator { return Iterator{ht_.cbegin()}; }
+
+  /** @return Iterator to the end of the hash table */
+  auto End() -> Iterator { return Iterator{ht_.cend()}; }
+
+ private:
+  std::unordered_map<AggregateKey, AggregateValue> ht_{};
+  std::vector<const AggrExpr *> agg_exprs_;
+};
+
+class AggregationOperator : public Operator
+{
+public:
+  AggregationOperator(const std::vector<AggrField> &aggr_fields, const std::vector<Field> &group_fields)
+  :aggr_fields_(aggr_fields),
+    group_fields_(group_fields),
+    aht_(aggr_fields),
+    aht_iterator_(aht_.Begin()) {
+      // tuple_.set_schema(aggr_fields);
+  }
+
+  ~AggregationOperator() {
+    if(children_[0]) {
+      delete children_[0];
+      children_[0] = nullptr;
+    }
+  }
+
+  RC open() override;
+  RC next() override;
+  RC close() override;
+
+  Tuple * current_tuple() override; 
+  //int tuple_cell_num() const override
+  //RC tuple_cell_spec_at(int index, TupleCellSpec &spec) const override
+private:
+  /** @return The tuple as an AggregateKey */
+  auto MakeAggregateKey(const Tuple *tuple) -> AggregateKey {
+    std::vector<TupleCell> keys;
+    for (const auto &field : group_fields_) {
+      TupleCell cell;
+      tuple->find_cell(field, cell);
+      keys.emplace_back(cell);
+    }
+    return {keys};
+  }
+  /** @return The tuple as an AggregateValue */
+  auto MakeAggregateValue(const Tuple *tuple) -> AggregateValue {
+    std::vector<TupleCell> vals;
+    for (const auto &field : aggr_fields_) {
+      TupleCell cell;
+      tuple->find_cell(field, cell);
+      vals.emplace_back(cell);
+    }
+    return {vals};
+  }
+private:
+  const std::vector<AggrField> &aggr_fields_;
+  const std::vector<Field> &group_fields_;
+
+  SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable::Iterator aht_iterator_;
 };

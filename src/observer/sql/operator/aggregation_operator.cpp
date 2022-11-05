@@ -23,8 +23,6 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/select_stmt.h"
 #include "storage/common/table.h"
 #include "rc.h"
-#include "float.h"
-#include "util/comparator.h"
 
 RC AggregationOperator::open()
 {
@@ -46,18 +44,32 @@ RC AggregationOperator::open()
       LOG_WARN("failed to get current record: %s", strrc(rc));
       return rc;
     }
+    aht_.InsertCombine(MakeAggregateKey(tuple), MakeAggregateValue(tuple));
   }
+  aht_iterator_ = aht_.Begin();
 
   return RC::SUCCESS;
 }
 
 RC AggregationOperator::next()
 {
-  return RC::RECORD_EOF;
+  if (aht_iterator_ == aht_.End()) {
+    return RC::RECORD_EOF;
+  }
+  AggregateKey key = aht_iterator_.Key();
+  AggregateValue val = aht_iterator_.Val();
+  ++aht_iterator_;
+  // tuple_.set_aggregate_key(&aht_iterator_.Key());
+  // tuple_.set_aggregate_val(&aht_iterator_.Val());
+  return RC::SUCCESS;
 }
 
 RC AggregationOperator::close()
 {
   children_[0]->close();
   return RC::SUCCESS;
+}
+
+Tuple * AggregationOperator::current_tuple(){
+  return nullptr;
 }
