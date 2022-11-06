@@ -195,6 +195,61 @@ void selects_append_order_by(Selects *selects, OrderAttr *order_attr) {
 void selects_append_group_by(Selects *selects, RelAttr *rel_attr) {
   selects->group_attrs[selects->group_num++] = *rel_attr;
 }
+void selects_copy(Selects *selects, Selects *sub_selects) {
+  // copy RelAttr
+  for (size_t i = 0; i < selects->attr_num; i++) {
+    sub_selects->attributes[i] = selects->attributes[i];
+  }
+  sub_selects->attr_num = selects->attr_num;
+  selects->attr_num = 0;
+
+  // copy AggrAttr
+  for (size_t i = 0; i < selects->aggr_num; i++) {
+    sub_selects->aggr_attributes[i] = selects->aggr_attributes[i];
+  }
+  sub_selects->aggr_num = selects->aggr_num;
+  selects->aggr_num = 0;
+
+  // copy relations
+  for (size_t i = 0; i < selects->relation_num; i++) {
+    sub_selects->relations[i] = selects->relations[i];
+  }
+  sub_selects->relation_num = selects->relation_num;
+  selects->relation_num = 0;
+
+  // copy conditions
+  for (size_t i = 0; i < selects->condition_num; i++) {
+    sub_selects->conditions[i] = selects->conditions[i];
+  }
+  sub_selects->condition_num = selects->condition_num;
+  selects->condition_num = 0;
+
+  // copy join_conditions
+  for (size_t i = 0; i < selects->join_num; i++) {
+    for(size_t j = 0; j < selects->join_conditions[i].condition_num; j++){
+      sub_selects->join_conditions[i].conditions[j] = selects->join_conditions[i].conditions[j];
+    }
+    sub_selects->join_conditions[i].condition_num = selects->join_conditions[i].condition_num;
+    selects->join_conditions[i].condition_num = 0;
+  }
+  sub_selects->join_num = selects->join_num;
+  selects->join_num = 0;
+
+  // copy order relations
+  for (size_t i = 0; i < selects->order_num; i++) {
+    sub_selects->order_attributes[i] = selects->order_attributes[i];
+  }
+  sub_selects->order_num = selects->order_num;
+  selects->order_num = 0;
+
+  // copy order relations
+  for (size_t i = 0; i < selects->group_num; i++) {
+    sub_selects->group_attrs[i] = selects->group_attrs[i];
+  }
+  sub_selects->group_num = selects->group_num;
+  selects->group_num = 0;
+}
+
 void selects_destroy(Selects *selects)
 {
   // destory RelAttr

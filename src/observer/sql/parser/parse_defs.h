@@ -311,6 +311,7 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
 void selects_append_join_conditions(Selects *selects, JoinCond *join_cond);
 void selects_append_order_by(Selects *selects, OrderAttr *order_attr);
 void selects_append_group_by(Selects *selects, RelAttr *rel_attr);
+void selects_copy(Selects *selects, Selects *sub_selects);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, size_t record_num);

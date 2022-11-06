@@ -193,7 +193,6 @@ python3 miniob_test.py \
         --debug \
         --log=stdout
 
-
 # primary-update-select
 python3 miniob_test.py \
         --test-case-dir=./test  \

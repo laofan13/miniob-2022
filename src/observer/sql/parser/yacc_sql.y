@@ -453,8 +453,9 @@ select:				/*  select 语句的语法解析树*/
     SELECT attr_value attr_list FROM ID relation where suffix_by SEMICOLON
 	{
 		CONTEXT->ssql->flag=SCF_SELECT;
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $5);
-		selects_append_conditions(&CONTEXT->ssql->sstr.selection, CONTEXT->conditions, CONTEXT->condition_length);
+		selects_append_relation(&CONTEXT->selection, $5);
+		selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
+		selects_copy(&CONTEXT->selection,&CONTEXT->ssql->sstr.selection);
 		//临时变量清零
 		CONTEXT->condition_length=0;
 		CONTEXT->from_length=0;
@@ -474,17 +475,17 @@ attr_value:
 	STAR {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, NULL, "*");
-		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
+		selects_append_attribute(&CONTEXT->selection, &rel_attr);
 	}
 	|ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, NULL, $1);
-		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
+		selects_append_attribute(&CONTEXT->selection, &rel_attr);
 	}
 	| ID DOT ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, $1, $3);
-		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &rel_attr);
+		selects_append_attribute(&CONTEXT->selection, &rel_attr);
 	}
 	| aggr_type LBRACE STAR RBRACE {
 		RelAttr rel_attr;
@@ -493,7 +494,7 @@ attr_value:
 		AggrAttr aggr_attr;
 		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
 
-		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+		selects_append_aggr_attribute(&CONTEXT->selection, &aggr_attr);
 	}
 	| aggr_type LBRACE ID RBRACE {
 		RelAttr rel_attr;
@@ -502,7 +503,7 @@ attr_value:
 		AggrAttr aggr_attr;
 		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
 
-		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+		selects_append_aggr_attribute(&CONTEXT->selection, &aggr_attr);
 	}
 	| aggr_type LBRACE ID DOT ID RBRACE {
 		RelAttr rel_attr;
@@ -511,7 +512,7 @@ attr_value:
 		AggrAttr aggr_attr;
 		aggr_attr_int(&aggr_attr, &rel_attr, CONTEXT->aggr_type);
 
-		selects_append_aggr_attribute(&CONTEXT->ssql->sstr.selection, &aggr_attr);
+		selects_append_aggr_attribute(&CONTEXT->selection, &aggr_attr);
 	};
 
 aggr_type:
@@ -526,23 +527,23 @@ aggr_type:
 relation:
 	/* empty */
 	| COMMA ID rel_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+		selects_append_relation(&CONTEXT->selection, $2);
 	}
 	| INNER JOIN ID join_condition join_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_relation(&CONTEXT->selection, $3);
 	};
 
 rel_list:
     /* empty */
     | COMMA ID rel_list {	
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $2);
+		selects_append_relation(&CONTEXT->selection, $2);
 	}
     ;
 
 join_list:
 	/* empty */
 	|INNER JOIN ID join_condition join_list {
-		selects_append_relation(&CONTEXT->ssql->sstr.selection, $3);
+		selects_append_relation(&CONTEXT->selection, $3);
 	}
 	;
 
@@ -551,7 +552,7 @@ join_condition:
 	| ON condition condition_list {
 		JoinCond join_cond;
 		init_join_condition(&join_cond, CONTEXT->conditions, CONTEXT->condition_length);
-		selects_append_join_conditions(&CONTEXT->ssql->sstr.selection,&join_cond);
+		selects_append_join_conditions(&CONTEXT->selection,&join_cond);
 
 		CONTEXT->condition_length=0;
 		CONTEXT->value_length = 0;
@@ -683,14 +684,14 @@ order_by_attr:
 		relation_attr_init(&order_attr.rel_attr, NULL, $1);
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
+		selects_append_order_by(&CONTEXT->selection, &order_attr);
 	}
 	| ID DOT ID order_type{
 		OrderAttr order_attr;
 		relation_attr_init(&order_attr.rel_attr, $1, $3);
 		order_attr.order_type = CONTEXT->order_type;
 
-		selects_append_order_by(&CONTEXT->ssql->sstr.selection, &order_attr);
+		selects_append_order_by(&CONTEXT->selection, &order_attr);
 	};
 
 order_type:
@@ -715,12 +716,12 @@ group_by_attr:
 	| ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, NULL, $1);
-		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->selection, &rel_attr);
 	}
 	| ID DOT ID {
 		RelAttr rel_attr;
 		relation_attr_init(&rel_attr, $1, $3);
-		selects_append_group_by(&CONTEXT->ssql->sstr.selection, &rel_attr);
+		selects_append_group_by(&CONTEXT->selection, &rel_attr);
 	};
 
 load_data:
