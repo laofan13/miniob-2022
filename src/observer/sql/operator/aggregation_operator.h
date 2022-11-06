@@ -111,24 +111,24 @@ public:
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
-      switch (agg_exprs_[i]->aggr_type()) {
+      if(!input.aggregates_[i].IsNull()) {
+        switch (agg_exprs_[i]->aggr_type()) {
         case AggrType::COUNT_FUNC:
         result->aggregates_[i] = result->aggregates_[i].Add(1);
         break;
-      case AggrType::SUM_FUNC:
-        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
-        break;
-      case AggrType::AVG_FUNC:
-        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
-        break;
-      case AggrType::MAX_FUNC:
-        result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
-        break;
-      case AggrType::MIN_FUNC:
-        result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
-        break;
-      }
-      if(!input.aggregates_[i].IsNull()) {
+        case AggrType::SUM_FUNC:
+          result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+          break;
+        case AggrType::AVG_FUNC:
+          result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+          break;
+        case AggrType::MAX_FUNC:
+          result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
+          break;
+        case AggrType::MIN_FUNC:
+          result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
+          break;
+        }
         result->aggregates_num_[i]++;
       }
     }

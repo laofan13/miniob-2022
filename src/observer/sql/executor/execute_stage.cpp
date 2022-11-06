@@ -549,6 +549,11 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event)
   AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_fields());
   aggr_oper.add_child(child_oper);
 
+  if(!select_stmt->is_has_group_by() && select_stmt->is_has_query_fields()) {
+    session_event->set_response("FAILURE\n");
+    return RC::GENERIC_ERROR;
+  }
+
   for (const Field &field : select_stmt->query_fields()) {
     aggr_oper.add_projection(field.table(), field.meta());
   }

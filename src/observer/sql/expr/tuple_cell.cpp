@@ -188,8 +188,10 @@ TupleCell TupleCell::Div(int num){
     int this_data = *(int *)data_;
     *(float *)data_ = (1.0 * this_data) / num;
   }break;
-  case CHARS:
-    break;
+  case CHARS:{
+     int this_data = *(int *)data_;
+    *(float *)data_ = (1.0 * this_data) / num;
+  }break;
   case NULLS:
     break;
   default:

@@ -49,6 +49,10 @@ public:
   FilterStmt *filter_stmt() const { return filter_stmt_; }
   JoinStmt *join_stmt() const { return join_stmt_; }
 
+  bool is_has_query_fields() {
+    return !query_fields_.empty();
+  }
+
   bool is_has_mutil_table() {
     return tables_.size() > 1;
   }
