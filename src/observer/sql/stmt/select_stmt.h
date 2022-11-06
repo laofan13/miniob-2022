@@ -56,11 +56,15 @@ public:
   bool is_inner_join();
 
   bool is_has_aggregation() {
-    return !aggr_fields_.empty() || !group_fields_.empty();
+    return !aggr_fields_.empty();
   } 
 
   bool is_has_order_by() {
     return !sort_fields_.empty();
+  }
+
+  bool is_has_group_by() {
+    return !group_fields_.empty();
   }
 
 private:

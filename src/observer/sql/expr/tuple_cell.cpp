@@ -201,7 +201,7 @@ TupleCell TupleCell::Div(int num){
 
 TupleCell TupleCell::Add(const TupleCell &other)
 {
-  switch (this->attr_type_){
+  switch (other.attr_type_){
   case INTS:{
     int this_data = *(int *)data_;
     int other_data = *(int *)(other.data_);
@@ -231,7 +231,7 @@ TupleCell TupleCell::Add(const TupleCell &other)
 TupleCell TupleCell::Max(const TupleCell &other) 
 {
   bool less = false;
-  switch (this->attr_type_)
+  switch (other.attr_type_)
   {
   case INTS:{
     int this_data = *(int *)data_;
@@ -260,6 +260,7 @@ TupleCell TupleCell::Max(const TupleCell &other)
     }
   }break;
   case NULLS:
+    
     break;
   default:
     break;
@@ -269,7 +270,7 @@ TupleCell TupleCell::Max(const TupleCell &other)
 TupleCell TupleCell::Min(const TupleCell &other) 
 {
   bool then = false;
-  switch (this->attr_type_)
+  switch (other.attr_type_)
   {
   case INTS:{
     int this_data = *(int *)data_;

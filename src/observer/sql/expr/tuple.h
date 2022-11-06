@@ -349,12 +349,11 @@ public:
   }
 
   void set_aggregate_value(std::vector<TupleCell> &aggregates) {
-    assert(aggregates.size() == speces_.size());
     this->aggregates_ = aggregates;
   }
 
-  void set_aggregate_num(int aggregate_num) {
-    this->aggregate_num_ = aggregate_num;
+  void set_aggregate_num(std::vector<size_t> &aggregates_num_) {
+    this->aggregates_num_ = aggregates_num_;
   }
 
   void add_cell_spec(TupleCellSpec *spec)
@@ -371,11 +370,20 @@ public:
     if (index < 0 || index >= static_cast<int>(speces_.size())) {
       return RC::GENERIC_ERROR;
     }
-    const AggrExpr * aggr_expr = (const AggrExpr *)speces_[index]->expression();
-    cell = this->aggregates_[index];
-    if(aggr_expr->aggr_type() == AVG_FUNC) {
-      cell.Div(aggregate_num_);
+    auto expr = speces_[index]->expression();
+    if(expr->type() == ExprType::FIELD) {
+      cell = this->group_bys_[index];
+    }else if(expr->type() == ExprType::AGGREGATE) {
+      const AggrExpr * aggr_expr = (const AggrExpr *)expr;
+      int i = index - group_bys_.size();
+      cell = this->aggregates_[i];
+      if(aggr_expr->aggr_type() == AVG_FUNC) {
+        cell.Div(aggregates_num_[i]);
+      }
+    }else{
+      return RC::GENERIC_ERROR;
     }
+
     return RC::SUCCESS;
   }
 
@@ -386,7 +394,8 @@ public:
 
     for (size_t i = 0; i < speces_.size(); ++i) {
       const AggrExpr * aggr_expr = (const AggrExpr *)speces_[i]->expression();
-      if (0 == strcmp(table_name, aggr_expr->table_name()) && 0 == strcmp(field_name, aggr_expr->field_name()) ) {
+      if (0 == strcmp(table_name, aggr_expr->table_name()) 
+        && 0 == strcmp(field_name, aggr_expr->field_name()) ) {
 	      return cell_at(i, cell);
       }
     }
@@ -405,5 +414,5 @@ private:
   std::vector<TupleCellSpec *> speces_;
   std::vector<TupleCell> aggregates_;
   std::vector<TupleCell> group_bys_;
-  int aggregate_num_;
+  std::vector<size_t> aggregates_num_;
 };

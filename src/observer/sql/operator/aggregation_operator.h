@@ -23,7 +23,6 @@ See the Mulan PSL v2 for more details. */
 struct AggregateKey {
   /** The group-by values */
   std::vector<TupleCell> group_bys_;
-
   /**
    * Compares two aggregate keys for equality.
    * @param other the other aggregate key to be compared with
@@ -41,7 +40,7 @@ struct AggregateKey {
 
 struct AggregateValue {
   std::vector<TupleCell> aggregates_;
-  size_t aggregate_num_ = 0;
+  std::vector<size_t> aggregates_num_;
 };
 
 namespace std {
@@ -80,6 +79,7 @@ public:
   /** @return The initial aggregrate value for this aggregation executor */
   auto GenerateInitialAggregateValue() -> AggregateValue {
     std::vector<TupleCell> values{};
+    std::vector<size_t> aggrs_num{};
     for (const auto &aggr_expr : agg_exprs_) {
       AttrType attr_type = aggr_expr->field().attr_type();
       switch (aggr_expr->aggr_type()) {
@@ -99,8 +99,9 @@ public:
         values.emplace_back(TupleCell::create_max_cell(attr_type));
         break;
       }
+      aggrs_num.emplace_back(0);
     }
-    return {values};
+    return {values, aggrs_num};
   }
 
   /**
@@ -118,7 +119,7 @@ public:
         result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
         break;
       case AggrType::AVG_FUNC:
-          result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
         break;
       case AggrType::MAX_FUNC:
         result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
@@ -126,6 +127,9 @@ public:
       case AggrType::MIN_FUNC:
         result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
         break;
+      }
+      if(!input.aggregates_[i].IsNull()) {
+        result->aggregates_num_[i]++;
       }
     }
   }
@@ -190,7 +194,6 @@ public:
     group_fields_(group_fields),
     aht_(aggr_fields),
     aht_iterator_(aht_.Begin()) {
-      this->tuple_.set_schema(aggr_fields);
     }
 
   ~AggregationOperator() {
@@ -199,6 +202,9 @@ public:
       children_[0] = nullptr;
     }
   }
+
+  void add_projection(const Table *table, const FieldMeta *field_meta);
+  void add_projection(const Table *table, const FieldMeta *field_meta, AggrType aggr_type);
 
   RC open() override;
   RC next() override;

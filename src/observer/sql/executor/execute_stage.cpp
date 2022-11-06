@@ -272,10 +272,6 @@ void print_tuple_header(std::ostream &os, SelectStmt *select_stmt)
     os << aggr_fields[i].aggr_name();
     os << ")";
   }
-  if (query_fields.size() > 0) {
-    os << '\n';
-  }
-
   if (query_fields.size() > 0 || aggr_fields.size()>0) {
     os << '\n';
   }
@@ -454,7 +450,7 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
     oper = join_oper;
   }else{
     if(select_stmt->tables().size() == 1) { //单表查询
-      if(select_stmt->is_has_order_by() || select_stmt->is_has_aggregation()) {
+      if(select_stmt->is_has_order_by()) {
         oper = new TableScanRecordOperator(select_stmt->tables()[0]);
       }else{
         oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
@@ -496,7 +492,7 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
 
-  if(select_stmt->is_has_aggregation()) {
+  if(select_stmt->is_has_aggregation() || select_stmt->is_has_group_by()) {
     return do_select_aggregation(sql_event);
   }
 
@@ -552,6 +548,13 @@ RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event)
   //聚集函数
   AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_fields());
   aggr_oper.add_child(child_oper);
+
+  for (const Field &field : select_stmt->query_fields()) {
+    aggr_oper.add_projection(field.table(), field.meta());
+  }
+  for (const AggrField &field : select_stmt->aggr_fields()) {
+    aggr_oper.add_projection(field.table(), field.meta(),field.aggr_type());
+  }
 
   rc = aggr_oper.open();
   if (rc != RC::SUCCESS) {
