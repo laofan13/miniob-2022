@@ -309,6 +309,7 @@ public:
   {
     return tuple_->find_cell(field, cell);
   }
+  
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
   {
     if (index < 0 || index >= static_cast<int>(speces_.size())) {
@@ -320,4 +321,89 @@ public:
 private:
   std::vector<TupleCellSpec *> speces_;
   Tuple *tuple_ = nullptr;
+};
+
+
+class AggregationTuple : public Tuple
+{
+public:
+  AggregationTuple() = default;
+  virtual ~AggregationTuple()
+  {
+    for (TupleCellSpec *spec : speces_) {
+      delete spec;
+    }
+    speces_.clear();
+  }
+
+  void set_schema(const std::vector<AggrField> &aggr_fields)
+  {
+    this->speces_.reserve(aggr_fields.size());
+    for (const auto &field : aggr_fields) {
+      speces_.push_back(new TupleCellSpec(new AggrExpr(field.table(), field.meta(),field.aggr_type())));
+    }
+  }
+
+  void set_group_key(std::vector<TupleCell> &group_bys) {
+    this->group_bys_ = group_bys;
+  }
+
+  void set_aggregate_value(std::vector<TupleCell> &aggregates) {
+    assert(aggregates.size() == speces_.size());
+    this->aggregates_ = aggregates;
+  }
+
+  void set_aggregate_num(int aggregate_num) {
+    this->aggregate_num_ = aggregate_num;
+  }
+
+  void add_cell_spec(TupleCellSpec *spec)
+  {
+    speces_.push_back(spec);
+  }
+  int cell_num() const override
+  {
+    return speces_.size();
+  }
+
+  RC cell_at(int index, TupleCell &cell) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      return RC::GENERIC_ERROR;
+    }
+    const AggrExpr * aggr_expr = (const AggrExpr *)speces_[index]->expression();
+    cell = this->aggregates_[index];
+    if(aggr_expr->aggr_type() == AVG_FUNC) {
+      cell.Div(aggregate_num_);
+    }
+    return RC::SUCCESS;
+  }
+
+  RC find_cell(const Field &field, TupleCell &cell) const override
+  {
+    const char *table_name = field.table_name();
+    const char *field_name = field.field_name();
+
+    for (size_t i = 0; i < speces_.size(); ++i) {
+      const AggrExpr * aggr_expr = (const AggrExpr *)speces_[i]->expression();
+      if (0 == strcmp(table_name, aggr_expr->table_name()) && 0 == strcmp(field_name, aggr_expr->field_name()) ) {
+	      return cell_at(i, cell);
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
+  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
+  {
+    if (index < 0 || index >= static_cast<int>(speces_.size())) {
+      return RC::NOTFOUND;
+    }
+    spec = speces_[index];
+    return RC::SUCCESS;
+  }
+private:
+  std::vector<TupleCellSpec *> speces_;
+  std::vector<TupleCell> aggregates_;
+  std::vector<TupleCell> group_bys_;
+  int aggregate_num_;
 };

@@ -454,7 +454,7 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
     oper = join_oper;
   }else{
     if(select_stmt->tables().size() == 1) { //单表查询
-      if(select_stmt->is_has_order_by() || select_stmt->is_has_group_by()) {
+      if(select_stmt->is_has_order_by() || select_stmt->is_has_aggregation()) {
         oper = new TableScanRecordOperator(select_stmt->tables()[0]);
       }else{
         oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
@@ -485,13 +485,6 @@ RC ExecuteStage::do_select_create_child_oper(SelectStmt *select_stmt,Operator *&
     sort_oper->add_child(oper);
     oper = sort_oper;
   }
-
-  // 聚集操作
-  if(select_stmt->is_has_group_by()) {
-    AggregationOperator *aggr_oper = new AggregationOperator(select_stmt->aggr_fields(), select_stmt->group_fields());
-    aggr_oper->add_child(oper);
-    oper = aggr_oper;
-  }
   scan_oper = oper;
  
   return RC::SUCCESS;
@@ -502,6 +495,10 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
   RC rc = RC::SUCCESS;
+
+  if(select_stmt->is_has_aggregation()) {
+    return do_select_aggregation(sql_event);
+  }
 
   // 子操作符
   Operator *child_oper;
@@ -537,6 +534,49 @@ RC ExecuteStage:: do_select(SQLStageEvent *sql_event)
     project_oper.close();
   } else {
     rc = project_oper.close();
+  }
+  session_event->set_response(ss.str());
+  return rc;
+}
+
+RC ExecuteStage::do_select_aggregation(SQLStageEvent *sql_event)
+{
+  SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
+  SessionEvent *session_event = sql_event->session_event();
+  RC rc = RC::SUCCESS;
+
+  // 子操作符
+  Operator *child_oper;
+  do_select_create_child_oper(select_stmt, child_oper);
+
+  //聚集函数
+  AggregationOperator aggr_oper(select_stmt->aggr_fields(), select_stmt->group_fields());
+  aggr_oper.add_child(child_oper);
+
+  rc = aggr_oper.open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+  std::stringstream ss;
+  print_tuple_header(ss, select_stmt);
+  while ((rc = aggr_oper.next()) == RC::SUCCESS) {
+    Tuple * tuple = aggr_oper.current_tuple();
+    if (nullptr == tuple) {
+      rc = RC::INTERNAL;
+      LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+      break;
+    }
+    tuple_to_string(ss, *tuple);
+    ss << std::endl;
+  }
+
+  if (rc != RC::RECORD_EOF) {
+    LOG_WARN("something wrong while iterate operator. rc=%s", strrc(rc));
+    aggr_oper.close();
+  } else {
+    rc = aggr_oper.close();
   }
   session_event->set_response(ss.str());
   return rc;

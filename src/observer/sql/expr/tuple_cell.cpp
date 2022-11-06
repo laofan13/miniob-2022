@@ -167,14 +167,39 @@ bool TupleCell::null_compare(const TupleCell &other, CompOp comp) const{
   }
   return false;
 }
-TupleCell TupleCell::Add(int i) const
+TupleCell TupleCell::Add(int i)
 {
   int this_data = *(int *)data_;
   *(int *)data_ = this_data + i;
   return *this;
 }
 
-TupleCell TupleCell::Add(const TupleCell &other) const
+TupleCell TupleCell::Div(int num){
+  switch (this->attr_type_){
+  case INTS:{
+    int this_data = *(int *)data_;
+    *(float *)data_ = (1.0 * this_data) / num;
+  }break;
+  case FLOATS:{
+    float this_data = *(float *)data_;
+    *(float *)data_ = (1.0 * this_data) / num;
+  }break;
+  case DATES:{
+    int this_data = *(int *)data_;
+    *(float *)data_ = (1.0 * this_data) / num;
+  }break;
+  case CHARS:
+    break;
+  case NULLS:
+    break;
+  default:
+    break;
+  };
+  this->attr_type_ = FLOATS;
+  return *this;
+}
+
+TupleCell TupleCell::Add(const TupleCell &other)
 {
   switch (this->attr_type_){
   case INTS:{
@@ -203,7 +228,7 @@ TupleCell TupleCell::Add(const TupleCell &other) const
   }
   return *this;
 }
-TupleCell TupleCell::Max(const TupleCell &other) const
+TupleCell TupleCell::Max(const TupleCell &other) 
 {
   bool less = false;
   switch (this->attr_type_)
@@ -241,7 +266,7 @@ TupleCell TupleCell::Max(const TupleCell &other) const
   }
   return less? other : *this;
 }
-TupleCell TupleCell::Min(const TupleCell &other) const
+TupleCell TupleCell::Min(const TupleCell &other) 
 {
   bool then = false;
   switch (this->attr_type_)

@@ -25,3 +25,8 @@ RC ValueExpr::get_value(const Tuple &tuple, TupleCell & cell) const
   cell = tuple_cell_;
   return RC::SUCCESS;
 }
+
+RC AggrExpr::get_value(const Tuple &tuple, TupleCell &cell) const
+{
+  return tuple.find_cell(aggr_field_, cell);
+}

@@ -58,9 +58,12 @@ RC AggregationOperator::next()
   }
   AggregateKey key = aht_iterator_.Key();
   AggregateValue val = aht_iterator_.Val();
+
+  tuple_.set_group_key(key.group_bys_);
+  tuple_.set_aggregate_value(val.aggregates_);
+  tuple_.set_aggregate_num(val.aggregate_num_);
+
   ++aht_iterator_;
-  // tuple_.set_aggregate_key(&aht_iterator_.Key());
-  // tuple_.set_aggregate_val(&aht_iterator_.Val());
   return RC::SUCCESS;
 }
 
@@ -71,5 +74,5 @@ RC AggregationOperator::close()
 }
 
 Tuple * AggregationOperator::current_tuple(){
-  return nullptr;
+  return &tuple_;
 }

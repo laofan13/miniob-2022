@@ -54,10 +54,11 @@ public:
   int like_match(const TupleCell &other) const;
   bool null_compare(const TupleCell &other, CompOp comp) const;
 
-  TupleCell Add(int i) const; 
-  TupleCell Add(const TupleCell &other) const; 
-  TupleCell Max(const TupleCell &other) const; 
-  TupleCell Min(const TupleCell &other) const; 
+  TupleCell Add(int i); 
+  TupleCell Div(int num);
+  TupleCell Add(const TupleCell &other); 
+  TupleCell Max(const TupleCell &other); 
+  TupleCell Min(const TupleCell &other); 
   
   const char *data() const { return data_;}
   int length() const { return length_; }

@@ -19,7 +19,6 @@ See the Mulan PSL v2 for more details. */
 #include "rc.h"
 
 #include "util/hash_util.h"
-
 /** AggregateKey represents a key in an aggregation operation */
 struct AggregateKey {
   /** The group-by values */
@@ -42,6 +41,7 @@ struct AggregateKey {
 
 struct AggregateValue {
   std::vector<TupleCell> aggregates_;
+  size_t aggregate_num_ = 0;
 };
 
 namespace std {
@@ -118,7 +118,7 @@ public:
         result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
         break;
       case AggrType::AVG_FUNC:
-        result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+          result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
         break;
       case AggrType::MAX_FUNC:
         result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
@@ -190,8 +190,8 @@ public:
     group_fields_(group_fields),
     aht_(aggr_fields),
     aht_iterator_(aht_.Begin()) {
-      // tuple_.set_schema(aggr_fields);
-  }
+      this->tuple_.set_schema(aggr_fields);
+    }
 
   ~AggregationOperator() {
     if(children_[0]) {
@@ -234,4 +234,6 @@ private:
 
   SimpleAggregationHashTable aht_;
   SimpleAggregationHashTable::Iterator aht_iterator_;
+
+  AggregationTuple tuple_;
 };

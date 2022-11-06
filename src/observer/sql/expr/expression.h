@@ -24,7 +24,7 @@ enum class ExprType {
   NONE,
   FIELD,
   VALUE,
-  FUNC,
+  AGGREGATE
 };
 
 class Expression
@@ -106,19 +106,46 @@ private:
 };
 
 
-class AggrExpr: public FieldExpr 
+
+class AggrExpr : public Expression
 {
 public:
   AggrExpr() = default;
-  AggrExpr(const Table *table, const FieldMeta *field, const AggrType aggr_type) 
-  : FieldExpr(table, field),aggr_type_(aggr_type)
+  AggrExpr(const Table *table, const FieldMeta *field, const AggrType aggr_type) : aggr_field_(table, field, aggr_type)
   {}
 
   virtual ~AggrExpr() = default;
 
-  const AggrType aggr_type() const {
-    return aggr_type_;
+  ExprType type() const override
+  {
+    return ExprType::AGGREGATE;
   }
+
+  AggrField &field()
+  {
+    return aggr_field_;
+  }
+
+  const AggrField &field() const
+  {
+    return aggr_field_;
+  }
+
+  const char *table_name() const
+  {
+    return aggr_field_.table_name();
+  }
+
+  const char *field_name() const
+  {
+    return aggr_field_.field_name();
+  }
+
+  const AggrType aggr_type() const {
+    return aggr_field_.aggr_type();
+  }
+
+  RC get_value(const Tuple &tuple, TupleCell &cell) const override;
 private:
-  AggrType aggr_type_;
+  AggrField aggr_field_;
 };

@@ -140,6 +140,10 @@ static RC get_aggr_fields( Db *db,std::vector<Table *> &tables,
 
     if (common::is_blank(table_name)) {
       if(0 == strcmp(field_name, "*")) {
+        if(aggr_type != AggrType::COUNT_FUNC) {
+          LOG_WARN("only aggregation function is *. attr=%s", field_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
         const Table *table = tables[0];
         const FieldMeta *field_meta = table->table_meta().field(0);
         AggrField aggr_field(table, field_meta, aggr_type);
@@ -165,6 +169,10 @@ static RC get_aggr_fields( Db *db,std::vector<Table *> &tables,
       if (0 == strcmp(table_name, "*")) {
         if (0 != strcmp(field_name, "*")) {
           LOG_WARN("invalid field name while table is *. attr=%s", field_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+        if(aggr_type != AggrType::COUNT_FUNC) {
+          LOG_WARN("only aggregation function is *. attr=%s", field_name);
           return RC::SCHEMA_FIELD_MISSING;
         }
         const Table *table = tables[0];
