@@ -761,224 +761,6 @@ RC ExecuteStage::do_insert(SQLStageEvent *sql_event)
   return rc;
 }
 
-RC ExecuteStage::do_update_sub_select_aggregation(UpdateField &update) {
-  SelectStmt *select_stmt = update.select_stmt();
-  RC rc = RC::SUCCESS;
-
-  // Operator *scan_oper = new TableScanOperator(select_stmt->tables()[0]);
-
-  // DEFER([&] () {
-  //   delete scan_oper;
-  //   delete select_stmt;
-  // });
-
-  // PredicateOperator pred_oper(select_stmt->filter_stmt());
-  // pred_oper.add_child(scan_oper);
-
-  // AggrOperator aggr_oper(select_stmt);
-  // aggr_oper.add_child(&pred_oper);
-
-  // rc = aggr_oper.open();
-  // if (rc != RC::SUCCESS) {
-  //   return rc;
-  // } 
-
-  // auto aggr_results = aggr_oper.aggr_results();
-
-  // Value value;
-  // if(aggr_results.empty()) {
-  //   value.type = NULLS;
-  // }else{
-  //   TupleCell cell = aggr_results[0];
-  //   value.data = (void *)cell.data();
-  //   value.type = cell.attr_type();
-  // }
-
-  // if(value.type != NULLS) {
-  //   const AttrType field_type = update.attr_type();
-  //   AttrType value_type = value.type;
-  //   void *data = value.data;
-  //   if (field_type != value_type) { // TODO try to convert the value type to field type
-  //     if (field_type == INTS && value_type == FLOATS) {
-  //       float f = *(float *)data;
-  //       int val = round(*(float *)data);
-  //       *(int *)data = val;
-  //     }else if (field_type == INTS && value_type == CHARS) {
-  //       int val = std::atoi((char *)(data));
-  //       *(int *)data = val;
-  //     }else if (field_type == FLOATS && value_type == INTS) {
-  //       float val = *(int *)data;
-  //       *(float *)data = val;
-  //     }else if (field_type == FLOATS && value_type == CHARS) {
-  //       float val = std::atof((char *)(data));
-  //       *(float *)data = val;
-  //     }else if (field_type == CHARS && value_type == INTS) {
-  //       std::string s = std::to_string(*(int *)data);
-  //       char *str = (char *)(data);
-  //       int i =0;
-  //       for(;i < 4 && i < s.size();i++) {
-  //         str[i] = s[i];
-  //       }
-  //       if(i < 4) {
-  //         str[i] = '\0';
-  //       }else{
-  //         str[4] = '\0';
-  //       }
-  //     }else if (field_type == CHARS && value_type == FLOATS) {
-  //       std::ostringstream oss;
-  //       oss<<*(float *)data;
-  //       std::string s(oss.str());
-  //       char *str = (char *)(data);
-  //       int i =0;
-  //       for(;i < 4 && i < s.size();i++) {
-  //         str[i] = s[i];
-  //       }
-  //       if(i < 4) {
-  //         str[i] = '\0';
-  //       }else{
-  //         str[4] = '\0';
-  //       }
-  //     }else if(field_type == TEXTS && value_type == CHARS){
-  //       value.type = TEXTS;
-  //     }else{
-  //       LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-  //             update.table_name(), update.field_name(), field_type, value_type);
-  //       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  //     }
-  //   }
-  // }
-  
-  // update.set_select_value(value);
-  // aggr_oper.close();
-  return rc;
-}
-
-RC ExecuteStage::do_update_sub_select(UpdateField &update){
-  SelectStmt *select_stmt = update.select_stmt();
-  RC rc = RC::SUCCESS;
-
-  if (select_stmt->tables().size() != 1) {
-    LOG_WARN("select more than 1 tables is not supported");
-    rc = RC::UNIMPLENMENT;
-    return rc;
-  }
-
-  TableScanOperator scan_oper(select_stmt->tables()[0]);
-
-  PredicateOperator pred_oper(select_stmt->filter_stmt());
-  pred_oper.add_child(&scan_oper);
-
-  ProjectOperator project_oper;
-  project_oper.add_child(&pred_oper);
-  
-  for (const Field &field : select_stmt->query_fields()) {
-    project_oper.add_projection(field.table(), field.meta());
-  }
-  rc = project_oper.open();
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open operator");
-    return rc;
-  }
-
-  std::stringstream ss;
-  TupleCell cell;
-  Tuple * tuple = nullptr;
-  int num = 0;
-  while((rc = project_oper.next()) == RC::SUCCESS) {
-    if(num == 0) {
-      tuple = project_oper.current_tuple();
-      if(nullptr == tuple) {
-        return RC::GENERIC_ERROR;
-      }
-      if(tuple->cell_num() != 1) {
-        return RC::GENERIC_ERROR;
-      }
-      rc = tuple->cell_at(0, cell);
-      if(rc != RC::SUCCESS) {
-        return rc;
-      }
-      tuple_to_string(ss, *tuple);
-      ss << std::endl;
-    }
-    num++;
-  }
-
-  if(nullptr == tuple || num > 1) {
-    return RC::GENERIC_ERROR;
-  }
-
-  Value value;
-  int copy_len = cell.length();
-  value.data = new char[copy_len];
-  if(cell.attr_type() == NULLS) {
-    if(update.meta()->nullable()) {
-      value.type = NULLS;
-    }else{
-      return RC::GENERIC_ERROR;
-    }
-  }else {
-    value.type = cell.attr_type();
-    memcpy(value.data, cell.data(),copy_len);
-  }
-
-  if(value.type != NULLS) {
-    const AttrType field_type = update.attr_type();
-    AttrType value_type = value.type;
-    void *data = value.data;
-    if (field_type != value_type) { // TODO try to convert the value type to field type
-      if (field_type == INTS && value_type == FLOATS) {
-        int val = round(*(float *)data);
-        *(int *)data = val;
-      }else if (field_type == INTS && value_type == CHARS) {
-        int val = std::atoi((char *)(data));
-        *(int *)data = val;
-      }else if (field_type == FLOATS && value_type == INTS) {
-        float val = *(int *)data;
-        *(float *)data = val;
-      }else if (field_type == FLOATS && value_type == CHARS) {
-        float val = std::atof((char *)(data));
-        *(float *)data = val;
-      }else if (field_type == CHARS && value_type == INTS) {
-        std::string s = std::to_string(*(int *)data);
-        char *str = (char *)(data);
-        int i =0;
-        for(;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-        }
-        if(i < 4) {
-          str[i] = '\0';
-        }else{
-          str[4] = '\0';
-        }
-      }else if (field_type == CHARS && value_type == FLOATS) {
-        std::ostringstream oss;
-        oss<<*(float *)data;
-        std::string s(oss.str());
-        char *str = (char *)(data);
-        int i =0;
-        for(;i < 4 && i < s.size();i++) {
-          str[i] = s[i];
-        }
-        if(i < 4) {
-          str[i] = '\0';
-        }else{
-          str[4] = '\0';
-        }
-      }else if(field_type == TEXTS && value_type == CHARS){
-        value.type = TEXTS;
-      }else{
-        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d", 
-              update.table_name(), update.field_name(), field_type, value_type);
-        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-      }
-    }
-  }
-
-  update.set_select_value(value);
-  rc = project_oper.close();
-  return rc;
-}
-
 RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
   UpdateStmt *update_stmt = (UpdateStmt *)(sql_event->stmt());
   SessionEvent *session_event = sql_event->session_event();
@@ -989,19 +771,16 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
     return RC::GENERIC_ERROR;
   }
 
-  // for(auto &update: update_stmt->update_fields()) {
-  //   if(update.is_has_subselect()) {
-  //     if(!update.select_stmt()->aggr_fields().empty()) {
-  //       rc = do_update_sub_select_aggregation(update);
-  //     }else{
-  //       rc = do_update_sub_select(update);
-  //     }
-  //     if(rc != RC::SUCCESS) {
-  //       session_event->set_response("FAILURE\n");
-  //       return rc;
-  //     }
-  //   }
-  // }
+  // 更新子查询
+  for(auto &update: update_stmt->update_fields()) {
+    if(update.is_has_subselect()) {
+      rc = do_update_select(update);
+      if(rc != RC::SUCCESS) {
+        session_event->set_response("FAILURE\n");
+        return rc;
+      }
+    }
+  }
 
   Operator *scan_oper = try_to_create_index_scan_operator(update_stmt->filter_stmt());
   if (nullptr == scan_oper) {
@@ -1020,6 +799,79 @@ RC ExecuteStage::do_update(SQLStageEvent *sql_event) {
     session_event->set_response("SUCCESS\n");
   }
   update_oper.close();
+  return rc;
+}
+
+RC ExecuteStage::do_update_select(UpdateField &update)
+{
+  SelectStmt *select_stmt = update.select_stmt();
+  RC rc = RC::SUCCESS;
+
+  // 子操作符
+  Operator *scan_oper;
+  rc = do_select_create_child_oper(select_stmt, scan_oper);
+  if(rc != RC::SUCCESS) {
+    return rc;
+  }
+  
+  if(select_stmt->is_has_aggregation()) {//聚集函数
+    AggregationOperator *aggr_oper= new AggregationOperator(select_stmt->aggr_fields(), select_stmt->group_fields());
+    aggr_oper->add_child(scan_oper);
+
+    for (const Field &field : select_stmt->query_fields()) {
+      aggr_oper->add_projection(field.table(), field.meta());
+    }
+    for (const AggrField &field : select_stmt->aggr_fields()) {
+      aggr_oper->add_projection(field.table(), field.meta(),field.aggr_type());
+    }
+    scan_oper = aggr_oper;
+  }else{
+    ProjectOperator *project_oper = new ProjectOperator();
+    project_oper->add_child(scan_oper);
+    for (const Field &field : select_stmt->query_fields()) {
+      project_oper->add_projection(field.table(), field.meta());
+    }
+    scan_oper = project_oper;
+  }
+
+  rc = scan_oper->open();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open operator");
+    return rc;
+  }
+
+  TupleCell cell;
+  int i = 0;
+  while((rc = scan_oper->next()) == RC::SUCCESS) {
+    if(i == 0) {
+      auto tuple = scan_oper->current_tuple();
+      if(nullptr == tuple) {
+        return RC::GENERIC_ERROR;
+      }
+      rc = tuple->cell_at(0, cell);
+    }
+    if(++i > 1) {
+      return RC::GENERIC_ERROR;
+    }
+  }
+
+  if(i != 1) {
+    return RC::GENERIC_ERROR;
+  }
+
+  if(cell.IsNull() && !update.meta()->nullable()) {
+    return RC::GENERIC_ERROR;
+  }
+  if(!cell.type_conversion(update.attr_type())) { //类型转换
+    return RC::GENERIC_ERROR;
+  }
+
+  Value value;
+  value.data = (void*)cell.data();
+  value.type = cell.attr_type();
+
+  update.set_select_value(value);
+  rc = scan_oper->close();
   return rc;
 }
 

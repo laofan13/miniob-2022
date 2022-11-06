@@ -375,7 +375,7 @@ void updates_value_append(Updates *updates, const char *attribute_name, Value *v
 void updates_select_append(Updates *updates, const char *attribute_name, Selects *selects){
   UpdateRecord &update_record = updates->update_records[updates->update_num++];
   update_record.attribute_name = strdup(attribute_name);
-
+  selects_copy(selects, &update_record.sub_select);
   update_record.is_sub_select = 1;
 }
 

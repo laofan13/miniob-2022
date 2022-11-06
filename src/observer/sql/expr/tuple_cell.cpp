@@ -12,14 +12,16 @@ See the Mulan PSL v2 for more details. */
 // Created by WangYunlai on 2022/07/05.
 //
 
+#include <string>
+#include <regex>
+#include<cmath>
+#include <sstream>
+
 #include "sql/expr/tuple_cell.h"
 #include "storage/common/field.h"
 #include "common/log/log.h"
 #include "util/comparator.h"
 #include "util/util.h"
-
-#include <string>
-#include <regex>
 
 void TupleCell::to_string(std::ostream &os) const
 {
@@ -306,6 +308,41 @@ TupleCell TupleCell::Min(const TupleCell &other)
     break;
   }
   return then ? other : *this;
+}
+
+bool TupleCell::type_conversion(AttrType target_type)
+{
+  if(attr_type_ != NULLS && attr_type_ != target_type) {
+    char *new_data = new char[length_];
+    memset(new_data, 0 ,length_);
+
+    if (attr_type_ == INTS && target_type == FLOATS) {
+       float val = *(int *)data_;
+      *(float *)new_data = val;
+    }else if (attr_type_ == INTS && target_type == CHARS) {
+      std::string str = std::to_string(*(int *)data_);
+      memcpy(new_data, str.c_str(), length_);
+    }else if (attr_type_ == FLOATS && target_type == INTS) {
+      int val = round(*(float *)data_);
+      *(int *)new_data = val;
+    }else if (attr_type_ == FLOATS && target_type == CHARS) {
+      std::ostringstream oss;
+      oss<<*(float *)data_;
+      memcpy(new_data, oss.str().c_str(), length_);
+    }else if (attr_type_ == CHARS && target_type == INTS) {
+      int val = std::atoi((char *)data_);
+      *(int *)new_data = val;
+    }else if (attr_type_ == CHARS && target_type == FLOATS) {
+      float val = std::atof((char *)data_);
+      *(float *)new_data = val;
+    }else if(attr_type_ == CHARS && target_type == TEXTS){
+      attr_type_ = TEXTS;
+    }else{
+      return false;
+    }
+  }
+
+  return true;
 }
 
 TupleCell TupleCell::create_zero_cell(AttrType attr_type) {

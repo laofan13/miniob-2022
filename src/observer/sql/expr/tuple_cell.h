@@ -59,6 +59,8 @@ public:
   TupleCell Add(const TupleCell &other); 
   TupleCell Max(const TupleCell &other); 
   TupleCell Min(const TupleCell &other); 
+
+  bool type_conversion(AttrType target_type); 
   
   const char *data() const { return data_;}
   int length() const { return length_; }

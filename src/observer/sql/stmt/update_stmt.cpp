@@ -64,7 +64,8 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
       if(rc != RC::SUCCESS) {
         return rc;
       }
-      update_fields.push_back(UpdateField(table, field_meta, &update_record.value, true, (SelectStmt *)stmt));
+      UpdateField update_field(table, field_meta, &update_record.value, true, (SelectStmt *)stmt);
+      update_fields.emplace_back(update_field);
     }else{
       // check fields type
       const AttrType field_type = field_meta->type();
@@ -152,7 +153,6 @@ RC UpdateStmt::create(Db *db, Updates &update, Stmt *&stmt)
   update_stmt->table_ = table;
   update_stmt->update_fields_.swap(update_fields);
   update_stmt->filter_stmt_ = filter_stmt;
-  update_stmt->value_amount_ = 1;
   stmt = update_stmt;
 
   return RC::SUCCESS;

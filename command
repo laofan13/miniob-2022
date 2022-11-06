@@ -193,19 +193,6 @@ python3 miniob_test.py \
         --debug \
         --log=stdout
 
-# primary-update-select
-python3 miniob_test.py \
-        --test-case-dir=./test  \
-        --test-case-scores=case-scores.json \
-        --test-result-dir=result \
-        --test-result-tmp-dir=./result_tmp \
-        --test-cases=primary-update-select \
-        --db-base-dir=/home/ubuntu/DS/oceanbase/miniob-2022/build \
-        --db-config=/home/ubuntu/DS/oceanbase/miniob-2022/etc/observer.ini \
-        --code-type = none \
-        --debug \
-        --log=stdout
-
 # primary-join-tables
 python3 miniob_test.py \
         --test-case-dir=./test  \
@@ -239,6 +226,19 @@ python3 miniob_test.py \
         --test-result-dir=result \
         --test-result-tmp-dir=./result_tmp \
         --test-cases=primary-group-by \
+        --db-base-dir=/home/ubuntu/DS/oceanbase/miniob-2022/build \
+        --db-config=/home/ubuntu/DS/oceanbase/miniob-2022/etc/observer.ini \
+        --code-type = none \
+        --debug \
+        --log=stdout
+
+# primary-update-select
+python3 miniob_test.py \
+        --test-case-dir=./test  \
+        --test-case-scores=case-scores.json \
+        --test-result-dir=result \
+        --test-result-tmp-dir=./result_tmp \
+        --test-cases=primary-update-select \
         --db-base-dir=/home/ubuntu/DS/oceanbase/miniob-2022/build \
         --db-config=/home/ubuntu/DS/oceanbase/miniob-2022/etc/observer.ini \
         --code-type = none \

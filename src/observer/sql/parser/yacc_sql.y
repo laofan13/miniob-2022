@@ -446,6 +446,18 @@ update_value:
   		value_init_null(&value);
 		updates_value_append(&CONTEXT->ssql->sstr.update, $1, &value);
 	}
+	|ID EQ LBRACE SELECT attr_value attr_list FROM ID relation where suffix_by RBRACE {
+		selects_append_relation(&CONTEXT->selection, $8);
+		selects_append_conditions(&CONTEXT->selection, CONTEXT->conditions, CONTEXT->condition_length);
+		
+		updates_select_append(&CONTEXT->ssql->sstr.update, $1, &CONTEXT->selection);
+
+		//临时变量清零
+		CONTEXT->condition_length=0;
+		CONTEXT->from_length=0;
+		CONTEXT->select_length=0;
+		CONTEXT->value_length = 0;
+	}
     ;
 
 

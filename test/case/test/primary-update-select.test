@@ -19,36 +19,7 @@ SELECT * FROM Update_table_1;
 SELECT * FROM Update_table_2;
 SELECT * FROM Update_table_3;
 
--- echo 1. UPDATE A ROW
-UPDATE Update_table_2 SET t_name='N01', col2=2 WHERE id=1;
-SELECT * FROM Update_table_2;
-UPDATE Update_table_2 SET col1=2, col2=(select Update_table_3.col2 from Update_table_3 where Update_table_3.id=1) WHERE id=1;
-SELECT * FROM Update_table_2;
-
--- echo 2. UPDATE ROWS
-UPDATE Update_table_3 SET t_name=(select Update_table_2.t_name from Update_table_2 where Update_table_2.id=2);
-SELECT * FROM Update_table_3;
-
-
--- echo 9. AGGREGATION
-select max(Update_table_2.col2) from Update_table_2;
-select max(Update_table_2.col1) from Update_table_2;
-
-SELECT * FROM Update_table_3;
-UPDATE Update_table_3 SET col1=(select max(Update_table_2.col2) from Update_table_2),col2=(select max(Update_table_2.col1) from Update_table_2) where id=1;
-SELECT * FROM Update_table_3;
-
-
--- echo 10. ERROR
-select col2 from Update_table_2;
-UPDATE Update_table_3 SET col1=(select col2 from Update_table_2);
-
-
 -- echo 11. TYPECAST
-UPDATE Update_table_3 SET t_name=2,col1=2.0 WHERE id=2;
-SELECT * FROM Update_table_3;
-SELECT * FROM Update_table_2;
-select Update_table_2.col1 from Update_table_2 where Update_table_2.id=1;
-select avg(Update_table_2.col1) from Update_table_2;
+
 UPDATE Update_table_3 SET t_name=(select Update_table_2.col1 from Update_table_2 where Update_table_2.id=1),col1=(select avg(Update_table_2.col1) from Update_table_2) where id=1;
 SELECT * FROM Update_table_3;
